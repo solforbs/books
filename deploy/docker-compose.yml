@@ -1,0 +1,78 @@
+# Production stack for books.solforbs.com on the shared VPS (4 CPU / 6 GB RAM).
+# The VPS already runs other software, so this stack exposes ONE port on localhost only
+# (127.0.0.1:8088). The VPS's existing web server forwards books.solforbs.com to it
+# and handles HTTPS. MongoDB is never reachable from outside the Docker network.
+#
+# Usage (on the VPS, from the repo root):
+#   cp deploy/.env.example deploy/.env   # then fill in secrets
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+
+name: books
+
+services:
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.5"]
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Initialise the single-node replica set on first start (transactions need it).
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          memory: 1200m
+    networks: [internal]
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      MONGODB_URI: mongodb://mongo:27017/books?replicaSet=rs0
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in deploy/.env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set in deploy/.env}
+      COOKIE_SECURE: "true"
+      WEB_ORIGIN: https://books.solforbs.com
+    deploy:
+      resources:
+        limits:
+          memory: 600m
+    networks: [internal]
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:8088:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    networks: [internal]
+
+volumes:
+  mongo-data:
+
+networks:
+  internal:
