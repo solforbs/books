@@ -36,7 +36,10 @@ server {
 }
 ```
 
-Then run `sudo certbot --nginx -d books.solforbs.com`. If the VPS uses Caddy instead: `books.solforbs.com { reverse_proxy 127.0.0.1:8088 }`.
+Then run `sudo certbot --nginx -d books.solforbs.com`, and add HSTS inside that server block once HTTPS works:
+`add_header Strict-Transport-Security "max-age=31536000" always;`
+
+The `X-Forwarded-For` line is required: the app's inner nginx uses it to find the real visitor IP, so login rate limits apply per visitor, not to everyone at once. If the VPS uses Caddy instead: `books.solforbs.com { reverse_proxy 127.0.0.1:8088 }`.
 
 ## 3. Updates
 
@@ -52,3 +55,9 @@ Nightly dump, kept for 14 days. **Copy the dumps off the VPS as well** (another 
 docker compose -f deploy/docker-compose.yml exec -T mongo mongodump --archive --gzip > /backups/books-$(date +%F).gz
 find /backups -name 'books-*.gz' -mtime +14 -delete
 ```
+
+## 5. Security notes
+
+- Security headers and a strict Content-Security-Policy are added by the inner nginx (`deploy/nginx/security-headers.conf`) on every response.
+- Networks: the web container can reach only the API, and only the API can reach MongoDB (the `data` network has no internet access).
+- **Before real shop data:** enable MongoDB authentication (replica-set keyfile plus an app user with `readWrite` on `books` only). This is tracked as an open item from the S0 security review.

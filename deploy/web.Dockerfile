@@ -12,4 +12,5 @@ RUN pnpm --filter @books/shared build && pnpm --filter @books/web build
 
 FROM nginx:1.27-alpine
 COPY deploy/nginx/web.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
