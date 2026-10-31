@@ -20,7 +20,8 @@ Inventory-first shop app for Kenyan traders. Product specs live in `research/fea
 9. **Errors:** API errors always use `{ error: { code, message, details? } }` with stable codes.
 10. **Security:** validate all input with Zod at the boundary; never log passwords, tokens or full phone numbers; secrets only via env vars (`.env.example` documents them).
 11. **Tests:** every feature maps its spec T-cases to automated tests. `pnpm lint && pnpm typecheck && pnpm test` must pass before a commit.
-12. Match surrounding code style; small, well-named functions; comments explain _why_, not _what_.
+12. **Visual style (G9):** Space Grotesk for titles/headings, Inter for body/labels (self-hosted); **no emojis** anywhere. Use icons (lucide-react) or words.
+13. Match surrounding code style; small, well-named functions; comments explain _why_, not _what_.
 
 ## Commands
 

@@ -39,3 +39,8 @@ Collected from the founders' decisions, 2026-10-31. **If a feature spec seems to
 
 ## G8. No running costs while developing
 - Prefer free and on-device options. Any paid service must be optional and switched off by default (e.g. the AI invoice helper, F05).
+
+## G9. Visual style (founders, 2026-10-31)
+- **Fonts:** **Space Grotesk** for titles and headings; **Inter** for body text, descriptions, labels, inputs and buttons. Both are self-hosted so they work offline.
+- **No emojis anywhere** (screens, receipts, PDFs, messages, translations). Use proper icons or plain words instead. Where a spec example shows an emoji (e.g. a camera or handshake symbol), read it as "an icon".
+
