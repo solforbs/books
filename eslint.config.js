@@ -12,6 +12,7 @@ export default tseslint.config(
       "**/coverage/**",
       "**/dev-dist/**",
       "research/**",
+      ".claude/**",
     ],
   },
   js.configs.recommended,
