@@ -45,7 +45,8 @@ export class AuthGuard implements CanActivate {
     req.auth = {
       userId: claims.sub,
       tenantId: claims.tenantId,
-      role: claims.role,
+      // Filled from the membership record by RequireTenantGuard (security review M3).
+      role: null,
       sessionId: claims.sid,
     };
     return true;

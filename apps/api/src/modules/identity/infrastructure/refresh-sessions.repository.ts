@@ -9,6 +9,7 @@ export interface NewRefreshSession {
   tokenHash: string;
   userId: string;
   activeTenantId: string | null;
+  familyStartedAt: Date;
   expiresAt: Date;
   userAgent: string;
   ip: string;
@@ -47,6 +48,11 @@ export class RefreshSessionsRepository {
       expiresAt: { $gt: now },
     });
     return found !== null;
+  }
+
+  /** Revocation flips every token of a family (used ones too) to `revoked`. */
+  async isFamilyRevoked(familyId: string): Promise<boolean> {
+    return (await this.model.exists({ familyId, status: "revoked" })) !== null;
   }
 
   async setActiveTenant(familyId: string, tenantId: string): Promise<void> {

@@ -4,10 +4,10 @@ import type { z } from "zod";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import { AuditService } from "../../audit/application/audit.service";
 import { pickActiveMembership } from "../domain/active-tenant";
-import { isLocked, secondsUntilUnlock } from "../domain/auth-policy";
 import { IdentityErrors } from "../domain/identity-errors";
 import { PasswordHasher } from "../infrastructure/password-hasher";
 import { UsersRepository } from "../infrastructure/users.repository";
+import { PasswordAttempts } from "./password-attempts";
 import { SessionIssuer, type IssuedTokens } from "./session-issuer";
 import { SessionView } from "./session-view";
 
@@ -16,13 +16,15 @@ export type LoginInput = z.output<typeof loginRequestSchema>;
 /**
  * Phone-or-email + password login. Unknown user, wrong password and disabled
  * user all give the same `invalid_credentials` error after the same amount of
- * hashing work, so nobody can probe which numbers are registered.
+ * hashing work, so nobody can probe which numbers are registered. Lockout
+ * counting is atomic and happens before the hash check (PasswordAttempts).
  */
 @Injectable()
 export class LoginUseCase {
   constructor(
     private readonly users: UsersRepository,
     private readonly hasher: PasswordHasher,
+    private readonly attempts: PasswordAttempts,
     private readonly issuer: SessionIssuer,
     private readonly view: SessionView,
     private readonly audit: AuditService,
@@ -46,18 +48,19 @@ export class LoginUseCase {
       });
 
     if (!user || user.status !== "active") {
+      // argon2 dominates both paths; the known-user path's one extra write is noise.
       await this.hasher.verifyAgainstDummy(input.password);
       await fail(user ? "user_disabled" : "unknown_user", user?._id.toHexString());
       throw IdentityErrors.invalidCredentials();
     }
     const userId = user._id.toHexString();
-    if (isLocked(user.lockedUntil, now)) {
+    const attempt = await this.attempts.check(userId, input.password, now);
+    if (attempt.outcome === "locked") {
       await fail("locked", userId);
-      throw IdentityErrors.accountLocked(secondsUntilUnlock(user.lockedUntil!, now));
+      throw IdentityErrors.accountLocked(attempt.retryAfterSeconds);
     }
-    if (!(await this.hasher.verify(user.passwordHash, input.password))) {
-      const nowLocked = await this.users.registerFailedLogin(userId, now);
-      await fail(nowLocked ? "wrong_password_locked" : "wrong_password", userId);
+    if (attempt.outcome === "wrong") {
+      await fail(attempt.lockedNow ? "wrong_password_locked" : "wrong_password", userId);
       throw IdentityErrors.invalidCredentials();
     }
 

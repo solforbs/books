@@ -1,12 +1,14 @@
 import { Schema, type Types } from "mongoose";
 
 export const REFRESH_SESSION_MODEL = "RefreshSession";
+export const REFRESH_SESSION_PURGE_AFTER_SECONDS = 7 * 24 * 60 * 60;
 
 /**
  * One document per refresh token. Every token issued from the same login shares
  * a `familyId` (the session id, `sid` in the access token). A token is used once:
  * rotation marks it `used`; presenting a `used` token again means it was stolen,
- * so the whole family is revoked.
+ * so the whole family is revoked (unless it is a tab racing a fresh rotation, see
+ * RefreshUseCase). Documents are purged by a TTL index a week after `expiresAt`.
  */
 export interface RefreshSessionDoc {
   _id: Types.ObjectId;
@@ -16,6 +18,11 @@ export interface RefreshSessionDoc {
   userId: Types.ObjectId;
   activeTenantId: Types.ObjectId | null;
   status: "active" | "used" | "revoked";
+  /**
+   * When the login that started this family happened; caps the total session
+   * lifetime. Missing only on documents written before the cap existed.
+   */
+  familyStartedAt?: Date;
   expiresAt: Date;
   userAgent: string;
   ip: string;
@@ -31,6 +38,7 @@ export const refreshSessionSchema = new Schema<RefreshSessionDoc>(
     userId: { type: Schema.Types.ObjectId, required: true },
     activeTenantId: { type: Schema.Types.ObjectId, default: null },
     status: { type: String, enum: ["active", "used", "revoked"], default: "active" },
+    familyStartedAt: { type: Date, required: true },
     expiresAt: { type: Date, required: true },
     userAgent: { type: String, default: "" },
     ip: { type: String, default: "" },
@@ -46,3 +54,8 @@ export const refreshSessionSchema = new Schema<RefreshSessionDoc>(
 refreshSessionSchema.index({ tokenHash: 1 }, { unique: true });
 refreshSessionSchema.index({ familyId: 1, status: 1 });
 refreshSessionSchema.index({ userId: 1, status: 1 });
+// Used, revoked and expired tokens are kept a week for reuse detection and audit, then purged.
+refreshSessionSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: REFRESH_SESSION_PURGE_AFTER_SECONDS },
+);

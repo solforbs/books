@@ -3,7 +3,11 @@ import mongoose, { Schema, Types, type Connection, type Model } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { inject } from "vitest";
 import { cents, type Cents } from "@books/shared";
-import { TenantScopedRepository, type TenantOwned } from "../tenant-scoped.repository";
+import {
+  TenantScopedRepository,
+  assertTenantIdUntouched,
+  type TenantOwned,
+} from "../tenant-scoped.repository";
 
 interface WidgetDoc extends TenantOwned {
   name: string;
@@ -66,7 +70,7 @@ describe("TenantScopedRepository: one business can never see another's data", ()
     expect(await repo.findOne(tenantA, { name: "B phone", ...smuggled })).toBeNull();
   });
 
-  it("updateOne cannot touch another tenant's document nor move a document between tenants", async () => {
+  it("updateOne cannot touch another tenant's document", async () => {
     const matched = await repo.updateOne(
       tenantA,
       { _id: widgetB._id },
@@ -74,15 +78,55 @@ describe("TenantScopedRepository: one business can never see another's data", ()
     );
     expect(matched).toBe(0);
     expect((await repo.findById(tenantB, widgetB._id.toHexString()))?.name).toBe("B phone");
+  });
 
-    await repo.updateOne(
+  const otherTenant = new Types.ObjectId(tenantA);
+  it.each([
+    ["$set", { $set: { tenantId: otherTenant, name: "moved" } }],
+    ["$set dotted path", { $set: { "tenantId.x": 1 } }],
+    ["bare field", { tenantId: otherTenant }],
+    ["$unset", { $unset: { tenantId: "" } }],
+    ["$rename from tenantId", { $rename: { tenantId: "oldTenant" } }],
+    ["$rename into tenantId", { $rename: { name: "tenantId" } }],
+    ["$rename into tenantId.*", { $rename: { name: "tenantId.sub" } }],
+    ["$setOnInsert", { $setOnInsert: { tenantId: otherTenant } }],
+    ["$min", { $min: { tenantId: otherTenant } }],
+    ["$max", { $max: { tenantId: otherTenant } }],
+    ["$currentDate", { $currentDate: { tenantId: true } }],
+    ["$push", { $push: { tenantId: otherTenant } }],
+    ["$addToSet", { $addToSet: { "tenantId.list": 1 } }],
+    ["$inc", { $inc: { tenantId: 1 } }],
+  ])("updateOne refuses an update touching tenantId via %s", async (_, update) => {
+    await expect(repo.updateOne(tenantB, { _id: widgetB._id }, update as never)).rejects.toThrow(
+      "tenantId cannot be changed",
+    );
+    const after = await repo.findById(tenantB, widgetB._id.toHexString());
+    expect(after?.tenantId.toHexString()).toBe(tenantB);
+    expect(after?.name).toBe("B phone");
+  });
+
+  it("updateOne refuses aggregation-pipeline updates", async () => {
+    const pipeline = [{ $set: { tenantId: otherTenant } }];
+    await expect(repo.updateOne(tenantB, { _id: widgetB._id }, pipeline as never)).rejects.toThrow(
+      "Pipeline updates are not allowed",
+    );
+    const after = await repo.findById(tenantB, widgetB._id.toHexString());
+    expect(after?.tenantId.toHexString()).toBe(tenantB);
+  });
+
+  it("updateOne still allows ordinary updates of the caller's own document", async () => {
+    const matched = await repo.updateOne(
       tenantB,
       { _id: widgetB._id },
-      { $set: { tenantId: new Types.ObjectId(tenantA), name: "renamed" } },
+      { $set: { name: "renamed" }, $inc: { priceCents: 100 } },
     );
+    expect(matched).toBe(1);
     const after = await repo.findById(tenantB, widgetB._id.toHexString());
     expect(after?.name).toBe("renamed");
     expect(after?.tenantId.toHexString()).toBe(tenantB);
+    await repo.updateOne(tenantB, { _id: widgetB._id }, { $set: { name: "B phone" } });
+    // Only the exact field and its sub-paths are guarded, not look-alike names.
+    expect(() => assertTenantIdUntouched({ $set: { tenantIdNote: "x" } })).not.toThrow();
   });
 
   it("refuses to run without a valid tenantId", async () => {

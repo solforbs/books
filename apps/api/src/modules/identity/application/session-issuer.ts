@@ -1,9 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import type { ActiveMembership } from "../domain/active-tenant";
-import { REFRESH_TOKEN_TTL_SECONDS } from "../domain/auth-policy";
+import { refreshExpiry } from "../domain/auth-policy";
 import { RefreshSessionsRepository } from "../infrastructure/refresh-sessions.repository";
 import { TokenService } from "../infrastructure/token-service";
+
+/** A login's refresh-token family: its id (`sid`) and when the login happened. */
+export interface SessionFamily {
+  id: string;
+  startedAt: Date;
+}
 
 export interface IssuedTokens {
   accessToken: string;
@@ -20,17 +26,18 @@ export class SessionIssuer {
 
   /** A brand-new session (login, register). */
   start(userId: string, active: ActiveMembership | null, meta: RequestMeta): Promise<IssuedTokens> {
-    return this.issue(this.tokens.newSessionId(), userId, active, meta);
+    const family = { id: this.tokens.newSessionId(), startedAt: new Date() };
+    return this.issue(family, userId, active, meta);
   }
 
-  /** Next token in an existing family (refresh rotation). */
+  /** Next token in an existing family (refresh rotation); keeps the family's start time. */
   rotate(
-    sessionId: string,
+    family: SessionFamily,
     userId: string,
     active: ActiveMembership | null,
     meta: RequestMeta,
   ): Promise<IssuedTokens> {
-    return this.issue(sessionId, userId, active, meta);
+    return this.issue(family, userId, active, meta);
   }
 
   /** A new access token only, e.g. after choosing a business. */
@@ -44,22 +51,23 @@ export class SessionIssuer {
   }
 
   private async issue(
-    sessionId: string,
+    family: SessionFamily,
     userId: string,
     active: ActiveMembership | null,
     meta: RequestMeta,
   ): Promise<IssuedTokens> {
     const refreshToken = this.tokens.newRefreshToken();
     await this.sessions.create({
-      familyId: sessionId,
+      familyId: family.id,
       tokenHash: this.tokens.hashRefreshToken(refreshToken),
       userId,
       activeTenantId: active?.tenantId ?? null,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
+      familyStartedAt: family.startedAt,
+      expiresAt: refreshExpiry(family.startedAt, new Date()),
       userAgent: meta.userAgent,
       ip: meta.ip,
     });
-    const accessToken = await this.accessToken(sessionId, userId, active);
+    const accessToken = await this.accessToken(family.id, userId, active);
     return { accessToken, refreshToken };
   }
 }

@@ -3,6 +3,7 @@ import { sessionResponseSchema } from "@books/shared";
 import { PASSWORD, registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
+import { TokenService } from "../infrastructure/token-service";
 
 describe("sessions: me, refresh, logout", () => {
   let t: TestApp;
@@ -10,6 +11,13 @@ describe("sessions: me, refresh, logout", () => {
     t = await createTestApp();
   });
   afterAll(() => t.close());
+
+  const hashOf = (rt: string) => t.app.get(TokenService).hashRefreshToken(rt);
+  /** Pretend a refresh token was rotated `ms` ago. */
+  const backdateUse = (rt: string, ms: number) =>
+    t.db
+      .collection("refresh_sessions")
+      .updateOne({ tokenHash: hashOf(rt) }, { $set: { usedAt: new Date(Date.now() - ms) } });
 
   it("GET /auth/me returns the session for a logged-in user", async () => {
     const client = new TestClient(t.app);
@@ -54,8 +62,10 @@ describe("sessions: me, refresh, logout", () => {
     await registerOwner(victim);
     const stolenRt = victim.jar.get("books_rt")!;
 
-    // The real user refreshes; the stolen token is now "used".
+    // The real user refreshes; the stolen token is now "used"...
     expect((await victim.post("/auth/refresh")).statusCode).toBe(200);
+    // ...and that was longer ago than the parallel-tab grace window.
+    await backdateUse(stolenRt, 31_000);
 
     // The attacker replays the stolen token.
     const replay = await new TestClient(t.app).post("/auth/refresh", undefined, {

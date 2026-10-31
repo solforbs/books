@@ -113,7 +113,7 @@ describe("POST /auth/register", () => {
 
     const audit = await t.db.collection("audit_log").find({ action: "register" }).toArray();
     const mine = audit.find((a) => a.userId?.toHexString() === user.id)!;
-    expect(mine.identifierMasked).toBe(`${e164(phone).slice(0, 7)}***${phone.slice(-3)}`);
+    expect(mine.identifierMasked).toBe(`+254******${phone.slice(-3)}`);
     expect(JSON.stringify(audit)).not.toContain(e164(phone));
   });
 });

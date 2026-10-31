@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { ClientSession, Model } from "mongoose";
 import { isObjectIdString, toObjectId } from "../../../common/database/object-id";
-import { LOCKOUT_MS, MAX_FAILED_LOGINS } from "../domain/auth-policy";
+import { LOCKOUT_MS, MAX_FAILED_LOGINS, isLocked } from "../domain/auth-policy";
 import { USER_MODEL, type UserDoc } from "./schemas/user.schema";
 
 export type NewUser = Pick<UserDoc, "name" | "passwordHash" | "language"> & {
@@ -42,20 +42,44 @@ export class UsersRepository {
     return created!.toObject();
   }
 
-  /** Counts a failed login; on the MAX-th failure locks the account. Returns true if now locked. */
-  async registerFailedLogin(id: string, now: Date): Promise<boolean> {
-    const updated = await this.model
-      .findByIdAndUpdate(id, { $inc: { failedLoginCount: 1 } }, { new: true })
+  /**
+   * Reserves one password attempt BEFORE the hash is checked, atomically, so
+   * parallel guesses cannot all slip past the limit (security review M2).
+   * Only matches an unlocked user; the MAX-th reservation locks the account
+   * (and restarts the count for after the lock). Returns null when the account
+   * is locked, otherwise the user and whether this attempt locked it.
+   * A correct password then clears the count via `clearFailedLogins`.
+   */
+  async reserveLoginAttempt(
+    id: string,
+    now: Date,
+  ): Promise<{ user: UserDoc; lockedNow: boolean } | null> {
+    if (!isObjectIdString(id)) return null;
+    const reachedMax = { $gte: ["$failedLoginCount", MAX_FAILED_LOGINS] };
+    const user = await this.model
+      .findOneAndUpdate(
+        { _id: toObjectId(id), $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }] },
+        [
+          { $set: { failedLoginCount: { $add: [{ $ifNull: ["$failedLoginCount", 0] }, 1] } } },
+          {
+            $set: {
+              lockedUntil: { $cond: [reachedMax, new Date(now.getTime() + LOCKOUT_MS), null] },
+              failedLoginCount: { $cond: [reachedMax, 0, "$failedLoginCount"] },
+            },
+          },
+        ],
+        { new: true },
+      )
       .lean<UserDoc>()
       .exec();
-    if (!updated || updated.failedLoginCount < MAX_FAILED_LOGINS) return false;
+    return user ? { user, lockedNow: isLocked(user.lockedUntil, now) } : null;
+  }
+
+  /** A correct password: forget failed attempts and lift a lock this attempt caused. */
+  async clearFailedLogins(id: string): Promise<void> {
     await this.model
-      .updateOne(
-        { _id: toObjectId(id) },
-        { $set: { lockedUntil: new Date(now.getTime() + LOCKOUT_MS), failedLoginCount: 0 } },
-      )
+      .updateOne({ _id: toObjectId(id) }, { $set: { failedLoginCount: 0, lockedUntil: null } })
       .exec();
-    return true;
   }
 
   async registerSuccessfulLogin(id: string, now: Date): Promise<void> {

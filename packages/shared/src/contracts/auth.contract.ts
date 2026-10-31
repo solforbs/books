@@ -127,6 +127,8 @@ export const AUTH_ERROR_CODES = [
   "too_many_requests",
   "not_authenticated",
   "session_expired",
+  /** 409 from POST /auth/refresh: another tab just rotated the token; retry GET /auth/me. */
+  "refresh_in_progress",
   "business_not_selected",
   "not_a_member",
   "invalid_recovery_code",

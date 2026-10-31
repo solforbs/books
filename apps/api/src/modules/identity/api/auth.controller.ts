@@ -9,6 +9,7 @@ import {
   type RegisterResponse,
   type SessionResponse,
 } from "@books/shared";
+import { AppError } from "../../../common/errors/app-error";
 import { Public } from "../../../common/security/public.decorator";
 import { StrictRateLimit } from "../../../common/security/rate-limit";
 import { ReqMeta, type RequestMeta } from "../../../common/security/request-meta";
@@ -99,7 +100,10 @@ export class AuthController {
       this.cookies.setAll(reply, tokens);
       return response;
     } catch (err) {
-      this.cookies.clear(reply);
+      // A racing tab must keep the fresh cookies the winning tab just received.
+      if (!(err instanceof AppError && err.code === "refresh_in_progress")) {
+        this.cookies.clear(reply);
+      }
       throw err;
     }
   }
@@ -120,6 +124,7 @@ export class AuthController {
     return this.getSessionUseCase.execute(auth);
   }
 
+  @StrictRateLimit()
   @Post("change-password")
   @HttpCode(204)
   async changePassword(

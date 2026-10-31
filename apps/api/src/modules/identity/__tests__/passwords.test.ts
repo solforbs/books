@@ -128,6 +128,41 @@ describe("change-password and recover", () => {
       expect((await login(a.request.phone!, PASSWORD)).statusCode).toBe(200);
     });
 
+    it("rejects a new password built from the user's name or email, and keeps the code unused", async () => {
+      const email = `wanjiku.otieno${Date.now()}@example.com`;
+      const { request, response } = await registerOwner(new TestClient(t.app), {
+        ownerName: "Wanjiku Otieno",
+        email,
+      });
+      const recover = (newPassword: string) =>
+        new TestClient(t.app).post("/auth/recover", {
+          identifier: request.phone,
+          recoveryCode: response.recoveryCodes[2],
+          newPassword,
+        });
+      const emailPrefix = email.split("@")[0]!;
+      for (const weak of ["Otieno-Duka-2026!", `X-${emailPrefix}-9!`]) {
+        const res = await recover(weak);
+        expect(res.statusCode, weak).toBe(400);
+        expect(res.json().error).toMatchObject({
+          code: "validation_failed",
+          details: [{ path: "newPassword", message: "weak_password" }],
+        });
+      }
+      // Nothing changed: old password works, and the same code still resets it.
+      expect((await login(request.phone!, PASSWORD)).statusCode).toBe(200);
+      expect((await recover(NEW_PASSWORD)).statusCode).toBe(204);
+    });
+
+    it("an unknown user with a name-like password still gets invalid_recovery_code (no enumeration)", async () => {
+      const res = await new TestClient(t.app).post("/auth/recover", {
+        identifier: "0799111222",
+        recoveryCode: "AAAA-BBBB-CCCC-DDDD",
+        newPassword: "Otieno-Duka-2026!",
+      });
+      expect(res.json().error.code).toBe("invalid_recovery_code");
+    });
+
     it("also lifts a lockout", async () => {
       const { request, response } = await registerOwner(new TestClient(t.app));
       for (let i = 0; i < 5; i++) await login(request.phone!, "Wrong-Password-99");

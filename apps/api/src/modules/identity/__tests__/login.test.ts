@@ -86,15 +86,17 @@ describe("POST /auth/login", () => {
 
   it("writes masked audit entries for success and failure, never the password", async () => {
     const phone = randomPhone();
-    await registerOwner(new TestClient(t.app), { phone });
+    const { response } = await registerOwner(new TestClient(t.app), { phone });
     await login(phone, "Wrong-Password-99");
     await login(phone, PASSWORD);
 
-    const masked = `${e164(phone).slice(0, 7)}***${phone.slice(-3)}`;
-    const entries = await t.db
-      .collection("audit_log")
-      .find({ action: "login", identifierMasked: masked })
-      .toArray();
+    const entries = (await t.db.collection("audit_log").find({ action: "login" }).toArray()).filter(
+      (e) => e.userId?.toHexString() === response.user.id,
+    );
+    expect(entries.map((e) => e.identifierMasked)).toEqual([
+      `+254******${phone.slice(-3)}`,
+      `+254******${phone.slice(-3)}`,
+    ]);
     expect(entries.map((e) => e.outcome).sort()).toEqual(["failure", "success"]);
     const dump = JSON.stringify(entries);
     expect(dump).not.toContain("Wrong-Password-99");

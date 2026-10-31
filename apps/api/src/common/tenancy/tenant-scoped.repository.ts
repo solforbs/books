@@ -68,31 +68,44 @@ export abstract class TenantScopedRepository<T extends TenantOwned> {
     return created!.toObject() as T;
   }
 
-  /** Returns the number of matched documents. `tenantId` itself can never be changed. */
+  /** Returns the number of matched documents. Throws if the update would touch `tenantId`. */
   async updateOne(
     tenantId: string,
     filter: FilterQuery<T>,
     update: UpdateQuery<T>,
     session?: ClientSession,
   ): Promise<number> {
+    assertTenantIdUntouched(update);
     const res = await this.model
-      .updateOne(this.scope(tenantId, filter), stripTenantId(update))
+      .updateOne(this.scope(tenantId, filter), update)
       .session(session ?? null)
       .exec();
     return res.matchedCount;
   }
 }
 
-function stripTenantId<T>(update: UpdateQuery<T>): UpdateQuery<T> {
-  const copy: Record<string, unknown> = { ...update };
-  delete copy.tenantId;
-  for (const op of ["$set", "$setOnInsert", "$unset", "$rename"]) {
-    const inner = copy[op];
-    if (inner && typeof inner === "object") {
-      const rest: Record<string, unknown> = { ...(inner as Record<string, unknown>) };
-      delete rest.tenantId;
-      copy[op] = rest;
+const touchesTenantId = (path: string) => path === "tenantId" || path.startsWith("tenantId.");
+
+/**
+ * Refuses (rather than silently drops) any update that could change which
+ * business a document belongs to: a `tenantId` / `tenantId.*` path under any
+ * operator ($set, $unset, $inc, $min, $max, $currentDate, $push, $addToSet,
+ * $setOnInsert, ...), a `$rename` to or from it, a bare replacement field, or
+ * an aggregation-pipeline update (too expressive to check safely).
+ */
+export function assertTenantIdUntouched(update: unknown): void {
+  if (Array.isArray(update)) {
+    throw new Error("Pipeline updates are not allowed on tenant-scoped data");
+  }
+  for (const [key, value] of Object.entries((update ?? {}) as Record<string, unknown>)) {
+    if (!key.startsWith("$")) {
+      if (touchesTenantId(key)) throw new Error("tenantId cannot be changed");
+      continue;
+    }
+    if (!value || typeof value !== "object") continue;
+    for (const [path, arg] of Object.entries(value as Record<string, unknown>)) {
+      const renamesInto = key === "$rename" && typeof arg === "string" && touchesTenantId(arg);
+      if (touchesTenantId(path) || renamesInto) throw new Error("tenantId cannot be changed");
     }
   }
-  return copy as UpdateQuery<T>;
 }

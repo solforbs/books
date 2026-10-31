@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { ClientSession, Model } from "mongoose";
 import type { Role } from "@books/shared";
-import { toObjectId } from "../../../common/database/object-id";
+import { isObjectIdString, toObjectId } from "../../../common/database/object-id";
 import { MEMBERSHIP_MODEL, type MembershipDoc } from "./schemas/membership.schema";
 
 /**
@@ -25,6 +25,15 @@ export class MembershipsRepository {
       { session },
     );
     return created!.toObject();
+  }
+
+  /** The caller's active membership in one business, or null. */
+  async findActive(userId: string, tenantId: string): Promise<MembershipDoc | null> {
+    if (!isObjectIdString(userId) || !isObjectIdString(tenantId)) return null;
+    return this.model
+      .findOne({ userId: toObjectId(userId), tenantId: toObjectId(tenantId), status: "active" })
+      .lean<MembershipDoc>()
+      .exec();
   }
 
   async findActiveForUser(userId: string): Promise<MembershipDoc[]> {

@@ -16,6 +16,9 @@ export const IdentityErrors = {
     }),
   notAuthenticated: () => err(401, "not_authenticated", "Please log in"),
   sessionExpired: () => err(401, "session_expired", "Session expired, please log in again"),
+  // Another tab refreshed with the same token a moment ago; retry with the new cookie.
+  refreshInProgress: () =>
+    err(409, "refresh_in_progress", "Session is being refreshed by another tab, retry"),
   businessNotSelected: () => err(403, "business_not_selected", "Choose a business first"),
   notAMember: () => err(403, "not_a_member", "You are not a member of this business"),
   invalidRecoveryCode: () =>

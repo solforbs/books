@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadAppConfig } from "../app-config";
+import { toFastifyTrustProxy } from "../trust-proxy";
 
 const valid = {
   MONGODB_URI: "mongodb://localhost:27017/books?replicaSet=rs0",
@@ -45,5 +46,57 @@ describe("loadAppConfig", () => {
     expect(
       loadAppConfig({ ...valid, NODE_ENV: "production", COOKIE_SECURE: "true" }).NODE_ENV,
     ).toBe("production");
+  });
+
+  it("TRUST_PROXY: false, a hop count or an IP/CIDR list; never trust-all", () => {
+    expect(loadAppConfig({ ...valid, TRUST_PROXY: "false" }).TRUST_PROXY).toBe(false);
+    expect(loadAppConfig({ ...valid, TRUST_PROXY: "1" }).TRUST_PROXY).toBe(1);
+    expect(loadAppConfig({ ...valid, TRUST_PROXY: " 2 " }).TRUST_PROXY).toBe(2);
+    expect(
+      loadAppConfig({ ...valid, TRUST_PROXY: "10.0.0.2, 172.18.0.0/16,::1,loopback" }).TRUST_PROXY,
+    ).toEqual(["10.0.0.2", "172.18.0.0/16", "::1", "loopback"]);
+
+    expect(() => loadAppConfig({ ...valid, TRUST_PROXY: "true" })).toThrow(
+      /TRUST_PROXY: trust-all is not allowed/,
+    );
+    for (const bad of ["yes", "10.0.0.300", "10.0.0.0/33", "1.2.3.4/8/1", "99"]) {
+      expect(() => loadAppConfig({ ...valid, TRUST_PROXY: bad }), bad).toThrow(/TRUST_PROXY/);
+    }
+  });
+
+  it("a hop count trusts the immediate peer only when it is on a private network", () => {
+    const trust = toFastifyTrustProxy(1) as (address: string, hop: number) => boolean;
+    for (const proxy of [
+      "127.0.0.1",
+      "172.18.0.5",
+      "10.1.2.3",
+      "192.168.1.9",
+      "::1",
+      "::ffff:10.0.0.2",
+    ]) {
+      expect(trust(proxy, 0), proxy).toBe(true);
+    }
+    expect(trust("8.8.8.8", 0)).toBe(false);
+    expect(trust("41.90.1.2", 1)).toBe(false);
+    expect(toFastifyTrustProxy(false)).toBe(false);
+    expect(toFastifyTrustProxy(["10.0.0.2"])).toEqual(["10.0.0.2"]);
+  });
+
+  it("refuses the .env.example placeholder secrets in production only", () => {
+    const placeholders = {
+      ...valid,
+      JWT_ACCESS_SECRET: "replace-with-a-long-random-access-secret",
+      COOKIE_SECURE: "true",
+    };
+    expect(loadAppConfig(placeholders).NODE_ENV).toBe("development");
+    expect(() => loadAppConfig({ ...placeholders, NODE_ENV: "production" })).toThrow(/placeholder/);
+    expect(() =>
+      loadAppConfig({
+        ...valid,
+        NODE_ENV: "production",
+        COOKIE_SECURE: "true",
+        JWT_REFRESH_SECRET: "replace-with-a-different-long-random-refresh-secret",
+      }),
+    ).toThrow(/placeholder/);
   });
 });
