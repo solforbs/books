@@ -50,6 +50,16 @@ describe("HTTP cross-cutting concerns", () => {
     expect(res.json().error.code).toBe("bad_request");
   });
 
+  it("accepts an empty body sent with a JSON content type (body-less POST such as logout)", async () => {
+    const res = await t.app.inject({
+      method: "POST",
+      url: "/api/v1/auth/logout",
+      headers: { "content-type": "application/json", "x-books-client": "web" },
+      payload: "",
+    });
+    expect(res.statusCode).toBe(204);
+  });
+
   it("rate-limits login attempts per IP with too_many_requests", async () => {
     const attempt = () =>
       new TestClient(t.app).post("/auth/login", {

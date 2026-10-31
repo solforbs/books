@@ -4,6 +4,7 @@ import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { CLIENT_HEADER } from "@books/shared";
 import type { AppConfig } from "../config/app-config";
+import { allowEmptyJsonBody } from "./empty-json-body";
 
 export const API_PREFIX = "api/v1";
 
@@ -24,6 +25,7 @@ export async function configureApp(app: NestFastifyApplication, config: AppConfi
   });
   await app.register(fastifyHelmet);
   await app.register(fastifyCookie);
+  allowEmptyJsonBody(app);
   // Fastify-level errors (bad JSON, body too large) are routed by Nest to the
   // global AllExceptionsFilter, so they get the same error shape.
   app.enableShutdownHooks();

@@ -44,7 +44,8 @@ export const registerRequestSchema = z
     ownerName: z.string().trim().min(2).max(100),
     phone: phoneSchema.optional(),
     email: emailSchema.optional(),
-    password: strongPassword,
+    // Strength is checked once below, together with the owner's and business names.
+    password: z.string().max(PASSWORD_MAX_LENGTH),
     language: z.enum(LANGUAGES).default("en"),
   })
   .refine((d) => d.phone || d.email, { message: "phone_or_email_required", path: ["phone"] })
