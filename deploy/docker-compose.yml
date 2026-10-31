@@ -33,7 +33,8 @@ services:
       resources:
         limits:
           memory: 1200m
-    networks: [internal]
+    # Only the API can reach the database; the web container cannot.
+    networks: [data]
 
   api:
     build:
@@ -51,11 +52,13 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set in deploy/.env}
       COOKIE_SECURE: "true"
       WEB_ORIGIN: https://books.solforbs.com
+      # Exactly one trusted proxy hop (the web container's nginx) sits in front of the API.
+      TRUST_PROXY: "1"
     deploy:
       resources:
         limits:
           memory: 600m
-    networks: [internal]
+    networks: [edge, data]
 
   web:
     build:
@@ -69,10 +72,12 @@ services:
       resources:
         limits:
           memory: 128m
-    networks: [internal]
+    networks: [edge]
 
 volumes:
   mongo-data:
 
 networks:
-  internal:
+  edge:
+  data:
+    internal: true
