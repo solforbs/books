@@ -12,16 +12,19 @@ describe("route guard", () => {
     });
     renderApp("/");
     expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
-    expect(calls.map((c) => c.path)).toEqual(["/auth/me", "/auth/refresh"]);
+    // The second /auth/me is the cross-tab re-check made inside the refresh lock.
+    expect(calls.map((c) => c.path)).toEqual(["/auth/me", "/auth/me", "/auth/refresh"]);
   });
 
   it("restores the session on load after refreshing an expired token", async () => {
-    mockFetch({
-      "GET /auth/me": [apiError(401, "session_expired"), { body: makeSession() }],
+    const expired = apiError(401, "session_expired");
+    const { calls } = mockFetch({
+      "GET /auth/me": [expired, expired, { body: makeSession() }],
       "POST /auth/refresh": { body: makeSession() },
     });
     renderApp("/");
     expect(await screen.findByText("Hello, Amina Hassan")).toBeInTheDocument();
+    expect(calls.filter((c) => c.path === "/auth/refresh")).toHaveLength(1);
   });
 
   it("keeps a logged-in person away from the login page", async () => {

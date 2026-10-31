@@ -1,7 +1,7 @@
 import type { SessionResponse } from "@books/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { isApiError } from "@/lib/api";
+import { isApiError, REFRESH_IN_PROGRESS } from "@/lib/api";
 import { fetchSession } from "../api/auth-api";
 
 export const SESSION_QUERY_KEY = ["auth", "session"] as const;
@@ -17,8 +17,13 @@ export function useSession() {
     staleTime: Infinity,
     gcTime: Infinity,
     // One quick retry only: a slow server should not keep people stuck on "Loading".
+    // Another tab renewing the session is also temporary, never a reason to log out.
     retry: (failureCount, error) =>
-      failureCount < 1 && (!isApiError(error) || error.status === 0 || error.status >= 500),
+      failureCount < 1 &&
+      (!isApiError(error) ||
+        error.status === 0 ||
+        error.status >= 500 ||
+        error.code === REFRESH_IN_PROGRESS),
     retryDelay: 500,
   });
 }

@@ -124,6 +124,7 @@ export const en = {
     csrf_header_missing: "Something went wrong. Please reload the page.",
     network_error: "No connection to the server. Check your internet and try again.",
     invalid_response: "The server sent an unexpected answer. Please try again.",
+    refresh_in_progress: "Your session is being updated in another window. Please try again.",
     unknown: "Something went wrong. Please try again.",
   },
   validation: {

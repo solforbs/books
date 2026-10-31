@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router";
 import { PublicOnly, RequireSession } from "@/features/auth/components/route-guards";
 import { ChangePasswordPage } from "@/features/auth/pages/change-password-page";
 import { ChooseBusinessPage } from "@/features/auth/pages/choose-business-page";

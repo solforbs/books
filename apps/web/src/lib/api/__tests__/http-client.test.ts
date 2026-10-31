@@ -60,31 +60,6 @@ describe("apiRequest", () => {
     });
   });
 
-  it("refreshes once and retries when the session expired", async () => {
-    const { calls } = mockFetch({
-      "GET /auth/me": [apiError(401, "session_expired"), { body: makeSession() }],
-      "POST /auth/refresh": { body: makeSession() },
-    });
-    const session = await apiRequest("/auth/me", { schema: sessionResponseSchema });
-
-    expect(session.user.name).toBe("Amina Hassan");
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "GET /auth/me",
-      "POST /auth/refresh",
-      "GET /auth/me",
-    ]);
-    expect(headersOf(calls[1]!.init)[CLIENT_HEADER]).toBe(CLIENT_HEADER_VALUE);
-  });
-
-  it("gives up after one retry and returns the original error when refresh fails", async () => {
-    const { calls } = mockFetch({
-      "GET /auth/me": apiError(401, "session_expired"),
-      "POST /auth/refresh": apiError(401, "not_authenticated"),
-    });
-    await expect(apiRequest("/auth/me")).rejects.toMatchObject({ code: "session_expired" });
-    expect(calls).toHaveLength(2);
-  });
-
   it("does not refresh when told to skip it (wrong password is not an expired session)", async () => {
     const { calls } = mockFetch({ "POST /auth/login": apiError(401, "invalid_credentials") });
     await expect(

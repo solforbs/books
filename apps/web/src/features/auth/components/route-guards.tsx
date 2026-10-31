@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
 import { FormError } from "./form-error";
 import { useSession } from "../hooks/use-session";

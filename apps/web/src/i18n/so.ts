@@ -157,6 +157,9 @@ export const so: Translations = {
     network_error: "Server-ka lama gaari karo. Hubi internetkaaga oo isku day mar kale.",
     // TODO(translate-review)
     invalid_response: "Server-ku wuxuu soo diray jawaab aan la filayn. Fadlan isku day mar kale.",
+    // TODO(translate-review)
+    refresh_in_progress:
+      "Fadhigaaga waxaa lagu cusboonaysiinayaa daaqad kale. Fadlan isku day mar kale.",
     unknown: "Wax baa khaldamay. Fadlan isku day mar kale.",
   },
   validation: {

@@ -1,7 +1,7 @@
 import { loginRequestSchema } from "@books/shared";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { FormField } from "@/components/form-field";
 import { InstallHint } from "@/components/install-hint";

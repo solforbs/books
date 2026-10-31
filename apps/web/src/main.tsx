@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router";
 import { AppProviders } from "./app/app-providers";
 import { AppRoutes } from "./app/app-routes";
 import { initI18n } from "./i18n";

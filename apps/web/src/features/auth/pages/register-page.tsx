@@ -1,7 +1,7 @@
 import { registerRequestSchema, type RegisterResponse } from "@books/shared";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";

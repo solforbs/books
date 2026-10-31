@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { AppProviders } from "@/app/app-providers";
 import { AppRoutes } from "@/app/app-routes";
 import { createQueryClient } from "@/lib/query-client";

@@ -1,7 +1,7 @@
 import { changePasswordRequestSchema } from "@books/shared";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";

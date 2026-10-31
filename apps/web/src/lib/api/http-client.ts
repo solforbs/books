@@ -1,10 +1,8 @@
-import { CLIENT_HEADER, CLIENT_HEADER_VALUE } from "@books/shared";
-import { ApiError, toApiError } from "./api-error";
+import { ApiError, REFRESH_IN_PROGRESS } from "./api-error";
+import { REFRESH_PATH, refreshSession } from "./refresh-session";
+import { send, type Method } from "./transport";
 
-export const API_BASE = "/api/v1";
-const REFRESH_PATH = "/auth/refresh";
-
-type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export { API_BASE } from "./transport";
 
 /** The part of a Zod schema we use; keeps this file independent of the Zod version. */
 export interface ResponseSchema<T> {
@@ -20,53 +18,6 @@ export interface RequestOptions<T> {
   skipRefresh?: boolean;
 }
 
-async function readBody(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) return undefined;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
-/** One HTTP round trip. Tokens live in httpOnly cookies, so we only send credentials. */
-async function send(path: string, method: Method, body: unknown): Promise<unknown> {
-  const headers: Record<string, string> = { Accept: "application/json" };
-  // CSRF guard: the API rejects state-changing requests without this header.
-  if (method !== "GET") headers[CLIENT_HEADER] = CLIENT_HEADER_VALUE;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}${path}`, {
-      method,
-      credentials: "include",
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch {
-    throw new ApiError(0, "network_error", "Network request failed");
-  }
-
-  const data = await readBody(response);
-  if (!response.ok) throw toApiError(response.status, data);
-  return data;
-}
-
-// Several requests may expire at once; they share one refresh call.
-let refreshing: Promise<boolean> | null = null;
-
-function refreshSession(): Promise<boolean> {
-  refreshing ??= send(REFRESH_PATH, "POST", undefined)
-    .then(() => true)
-    .catch(() => false)
-    .finally(() => {
-      refreshing = null;
-    });
-  return refreshing;
-}
-
 function validate<T>(data: unknown, schema: RequestOptions<T>["schema"]): T {
   if (!schema) return data as T;
   const parsed = schema.safeParse(data);
@@ -75,8 +26,8 @@ function validate<T>(data: unknown, schema: RequestOptions<T>["schema"]): T {
 }
 
 /**
- * Calls the API and validates the response. When the access token has expired, it calls
- * /auth/refresh once and retries the original request a single time.
+ * Calls the API and validates the response. When the access token has expired, it refreshes
+ * the session (serialised across tabs) and retries the original request a single time.
  */
 export async function apiRequest<T = unknown>(
   path: string,
@@ -88,7 +39,12 @@ export async function apiRequest<T = unknown>(
   } catch (error) {
     const canRefresh = !skipRefresh && path !== REFRESH_PATH;
     if (!(error instanceof ApiError) || !error.isAuthExpired || !canRefresh) throw error;
-    if (!(await refreshSession())) throw error;
+    const outcome = await refreshSession();
+    if (outcome === "failed") throw error;
+    if (outcome === "busy") {
+      // Not a logout: the session is being renewed elsewhere and a retry will work.
+      throw new ApiError(409, REFRESH_IN_PROGRESS, "Session refresh in progress");
+    }
     return validate(await send(path, method, body), schema);
   }
 }
