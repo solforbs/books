@@ -1,16 +1,10 @@
-import { apiErrorSchema } from "@books/shared";
+import { apiErrorSchema, type AuthErrorCode } from "@books/shared";
 
 /** Codes the client itself produces when there is no usable API error body. */
 export const CLIENT_ERROR_CODES = ["network_error", "invalid_response", "unknown"] as const;
 
-/**
- * 409 from /auth/refresh: another tab just refreshed; retry instead of logging out.
- * TODO: switch to the shared constant once it lands in @books/shared AUTH_ERROR_CODES.
- */
-export const REFRESH_IN_PROGRESS = "refresh_in_progress";
-
-/** API codes the web client knows before the shared contract lists them. */
-export const PENDING_API_ERROR_CODES = [REFRESH_IN_PROGRESS] as const;
+/** 409 from /auth/refresh: another tab just refreshed; retry instead of logging out. */
+export const REFRESH_IN_PROGRESS = "refresh_in_progress" satisfies AuthErrorCode;
 
 /** A failed API call. `code` is stable and is what the UI translates. */
 export class ApiError extends Error {

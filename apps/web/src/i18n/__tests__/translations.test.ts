@@ -1,6 +1,6 @@
 import { AUTH_ERROR_CODES, LANGUAGES, ROLES, type PasswordProblem } from "@books/shared";
 import { describe, expect, it } from "vitest";
-import { CLIENT_ERROR_CODES, PENDING_API_ERROR_CODES } from "@/lib/api";
+import { CLIENT_ERROR_CODES } from "@/lib/api";
 import { en } from "../en";
 import { so } from "../so";
 
@@ -40,7 +40,6 @@ describe("translations", () => {
     const required = [
       ...AUTH_ERROR_CODES.map((c) => `errors.${c}`),
       ...CLIENT_ERROR_CODES.map((c) => `errors.${c}`),
-      ...PENDING_API_ERROR_CODES.map((c) => `errors.${c}`),
       ...problems.map((p) => `passwordProblem.${p}`),
       ...ROLES.map((r) => `role.${r}`),
       ...LANGUAGES.map((l) => `language.${l}`),
