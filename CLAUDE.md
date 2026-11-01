@@ -4,7 +4,7 @@ Inventory-first shop app for Kenyan traders. Product specs live in `research/fea
 
 ## Stack
 
-- pnpm monorepo: `apps/api` (NestJS on Fastify, MongoDB via Mongoose), `apps/web` (React + Vite PWA), `packages/shared` (Zod contracts, money, IMEI, phone, password policy).
+- pnpm monorepo: `apps/api` (NestJS on Fastify, PostgreSQL via Drizzle ORM), `apps/web` (React + Vite PWA), `packages/shared` (Zod contracts, money, IMEI, phone, password policy).
 - TypeScript strict everywhere. Node >= 22.
 
 ## House rules

@@ -1,6 +1,12 @@
 # ARCH-01 — Architecture & Engineering Plan
 
 Status: **APPROVED by founders** · 2026-10-31 (login changed by founders, see §8)
+
+> **Database change (founders, 2026-11-01): MongoDB → PostgreSQL.** The app is mostly money and records that must always add up (stock, sales, payments, debts, ledger, reports). PostgreSQL gives built-in transactions, database-enforced rules (unique and foreign-key constraints), SQL reporting, and row-level security as a second guard for business separation.
+> - **Data layer:** **Drizzle ORM** with versioned SQL migrations.
+> - **Local development and tests:** an embedded PostgreSQL started by `pnpm dev` (no Docker).
+> - **Production:** PostgreSQL in the VPS Docker stack, with a password.
+> - **Unchanged:** the web app and the API contract. Every "MongoDB/Mongoose" mention below should be read as "PostgreSQL/Drizzle".
 Inputs: feature specs F01–F12 and the global rules in [../features/](../features/).
 
 ## 1. Decisions already made by the founders
