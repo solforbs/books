@@ -1,10 +1,15 @@
-import { Types } from "mongoose";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
 import { MAX_SESSION_LIFETIME_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from "../domain/auth-policy";
-import { REFRESH_SESSION_PURGE_AFTER_SECONDS } from "../infrastructure/schemas/refresh-session.schema";
+import { auditLog } from "../../audit/infrastructure/audit-log.table";
+import { RefreshSessionPurger } from "../infrastructure/refresh-session-purger";
+import {
+  REFRESH_SESSION_PURGE_AFTER_SECONDS,
+  refreshSessions,
+} from "../infrastructure/tables/refresh-sessions.table";
 import { TokenService } from "../infrastructure/token-service";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -16,8 +21,19 @@ describe("refresh: parallel tabs (M4) and session lifetime (L5)", () => {
   });
   afterAll(() => t.close());
 
-  const sessions = () => t.db.collection("refresh_sessions");
   const hashOf = (rt: string) => t.app.get(TokenService).hashRefreshToken(rt);
+  const setSession = (rt: string, set: Partial<typeof refreshSessions.$inferInsert>) =>
+    t.db
+      .update(refreshSessions)
+      .set(set)
+      .where(eq(refreshSessions.tokenHash, hashOf(rt)));
+  const sessionOf = async (rt: string) =>
+    (
+      await t.db
+        .select()
+        .from(refreshSessions)
+        .where(eq(refreshSessions.tokenHash, hashOf(rt)))
+    )[0];
   const refreshWith = (rt: string) =>
     new TestClient(t.app).post("/auth/refresh", undefined, { cookies: { books_rt: rt } });
 
@@ -35,11 +51,13 @@ describe("refresh: parallel tabs (M4) and session lifetime (L5)", () => {
 
     expect((await tabA.get("/auth/me")).statusCode).toBe(200);
     expect((await tabA.post("/auth/refresh")).statusCode).toBe(200);
-    const reuse = await t.db.collection("audit_log").countDocuments({
-      action: "refresh_token_reuse",
-      userId: new Types.ObjectId(response.user.id),
-    });
-    expect(reuse).toBe(0);
+    const reuse = await t.db
+      .select()
+      .from(auditLog)
+      .where(
+        and(eq(auditLog.action, "refresh_token_reuse"), eq(auditLog.userId, response.user.id)),
+      );
+    expect(reuse).toHaveLength(0);
   });
 
   it("simultaneous refreshes with one token: exactly one rotates, the others get 409", async () => {
@@ -61,10 +79,7 @@ describe("refresh: parallel tabs (M4) and session lifetime (L5)", () => {
     await registerOwner(client);
     const old = client.jar.get("books_rt")!;
     expect((await client.post("/auth/refresh")).statusCode).toBe(200);
-    await sessions().updateOne(
-      { tokenHash: hashOf(old) },
-      { $set: { usedAt: new Date(Date.now() - 30_001) } },
-    );
+    await setSession(old, { usedAt: new Date(Date.now() - 30_001) });
 
     const replay = await refreshWith(old);
     expect(replay.statusCode).toBe(401);
@@ -86,10 +101,10 @@ describe("refresh: parallel tabs (M4) and session lifetime (L5)", () => {
     await registerOwner(client);
     const rt = client.jar.get("books_rt")!;
     const startedAt = new Date(Date.now() - 89 * DAY_MS);
-    await sessions().updateOne({ tokenHash: hashOf(rt) }, { $set: { familyStartedAt: startedAt } });
+    await setSession(rt, { familyStartedAt: startedAt });
 
     expect((await client.post("/auth/refresh")).statusCode).toBe(200);
-    const next = await sessions().findOne({ tokenHash: hashOf(client.jar.get("books_rt")!) });
+    const next = await sessionOf(client.jar.get("books_rt")!);
     expect(next?.familyStartedAt).toEqual(startedAt);
     const cap = startedAt.getTime() + MAX_SESSION_LIFETIME_SECONDS * 1000;
     expect(next?.expiresAt.getTime()).toBe(cap);
@@ -100,20 +115,27 @@ describe("refresh: parallel tabs (M4) and session lifetime (L5)", () => {
     const client = new TestClient(t.app);
     await registerOwner(client);
     const rt = client.jar.get("books_rt")!;
-    await sessions().updateOne(
-      { tokenHash: hashOf(rt) },
-      { $set: { familyStartedAt: new Date(Date.now() - 91 * DAY_MS) } },
-    );
+    await setSession(rt, { familyStartedAt: new Date(Date.now() - 91 * DAY_MS) });
     const res = await client.post("/auth/refresh");
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe("session_expired");
     expect((await client.get("/auth/me")).statusCode).toBe(401);
   });
 
-  it("purges refresh_sessions documents a week after they expire (TTL index)", async () => {
-    const indexes = await sessions().listIndexes().toArray();
-    const ttl = indexes.find((i) => i.key.expiresAt === 1);
-    expect(ttl?.expireAfterSeconds).toBe(REFRESH_SESSION_PURGE_AFTER_SECONDS);
+  it("purges refresh_sessions rows a week after they expire, and nothing younger", async () => {
+    const stale = new TestClient(t.app);
+    await registerOwner(stale);
+    const keep = new TestClient(t.app);
+    await registerOwner(keep);
+    const staleRt = stale.jar.get("books_rt")!;
+    const keepRt = keep.jar.get("books_rt")!;
+    const week = REFRESH_SESSION_PURGE_AFTER_SECONDS * 1000;
+    await setSession(staleRt, { expiresAt: new Date(Date.now() - week - 60_000) });
+    await setSession(keepRt, { expiresAt: new Date(Date.now() - week + 60_000) });
+
+    expect(await t.app.get(RefreshSessionPurger).purge()).toBeGreaterThanOrEqual(1);
+    expect(await sessionOf(staleRt)).toBeUndefined();
+    expect(await sessionOf(keepRt)).toBeDefined();
     expect(REFRESH_SESSION_PURGE_AFTER_SECONDS).toBe(7 * 24 * 60 * 60);
   });
 });

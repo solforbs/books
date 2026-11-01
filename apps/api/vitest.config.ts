@@ -10,7 +10,7 @@ export default defineConfig({
     // argon2 is a native addon; separate processes are the safest pool for it.
     pool: "forks",
     testTimeout: 60_000,
-    // The first run downloads a MongoDB binary for mongodb-memory-server.
+    // Global setup creates a PostgreSQL cluster once per run (initdb takes ~20 s on Windows).
     hookTimeout: 300_000,
   },
 });

@@ -1,9 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import { InjectConnection } from "@nestjs/mongoose";
-import type { Connection } from "mongoose";
+import { Inject, Injectable } from "@nestjs/common";
 import type { RegisterResponse, registerRequestSchema } from "@books/shared";
 import type { z } from "zod";
-import { runInTransaction } from "../../../common/database/transaction";
+import { DB, type Database } from "../../../common/database/database.types";
+import { isUniqueViolation } from "../../../common/database/pg-errors";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import { AuditService } from "../../audit/application/audit.service";
 import { generateRecoveryCodes, normalizeRecoveryCode } from "../domain/recovery-codes";
@@ -23,7 +22,7 @@ export type RegisterInput = z.output<typeof registerRequestSchema>;
 @Injectable()
 export class RegisterUseCase {
   constructor(
-    @InjectConnection() private readonly connection: Connection,
+    @Inject(DB) private readonly db: Database,
     private readonly users: UsersRepository,
     private readonly tenants: TenantsRepository,
     private readonly memberships: MembershipsRepository,
@@ -46,30 +45,31 @@ export class RegisterUseCase {
     const codes = generateRecoveryCodes();
     const codeHashes = codes.map((c) => this.tokens.hashRecoveryCode(normalizeRecoveryCode(c)));
 
-    const { user, tenantId } = await runInTransaction(this.connection, async (session) => {
-      const user = await this.users.create(
-        {
-          name: input.ownerName,
-          phone: input.phone,
-          email: input.email,
-          passwordHash,
-          language: input.language,
-        },
-        session,
-      );
-      const userId = user._id.toHexString();
-      const tenant = await this.tenants.create(input.businessName, userId, session);
-      const tenantId = tenant._id.toHexString();
-      await this.memberships.create(userId, tenantId, "owner", session);
-      await this.recoveryCodes.createMany(userId, codeHashes, session);
-      return { user, tenantId };
-    }).catch((err: unknown) => {
-      // Lost a race with a concurrent sign-up using the same phone/email.
-      if ((err as { code?: number }).code === 11000) throw IdentityErrors.identifierTaken();
-      throw err;
-    });
+    const { user, tenantId } = await this.db
+      .transaction(async (tx) => {
+        const user = await this.users.create(
+          {
+            name: input.ownerName,
+            phone: input.phone,
+            email: input.email,
+            passwordHash,
+            language: input.language,
+          },
+          tx,
+        );
+        const tenant = await this.tenants.create(input.businessName, user.id, tx);
+        await this.memberships.create(user.id, tenant.id, "owner", tx);
+        await this.recoveryCodes.createMany(user.id, codeHashes, tx);
+        return { user, tenantId: tenant.id };
+      })
+      .catch((err: unknown) => {
+        // Lost a race with a concurrent sign-up using the same phone/email: the
+        // unique index rejects the second insert and the whole transaction rolls back.
+        if (isUniqueViolation(err)) throw IdentityErrors.identifierTaken();
+        throw err;
+      });
 
-    const userId = user._id.toHexString();
+    const userId = user.id;
     const active = { tenantId, role: "owner" as const };
     const tokens = await this.issuer.start(userId, active, meta);
     await this.audit.record({

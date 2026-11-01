@@ -1,5 +1,8 @@
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sessionResponseSchema } from "@books/shared";
+import { auditLog } from "../../audit/infrastructure/audit-log.table";
+import { users } from "../infrastructure/tables/users.table";
 import { PASSWORD, e164, randomEmail, randomPhone, registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
@@ -70,8 +73,9 @@ describe("POST /auth/login", () => {
 
     // Time passes: move the lock into the past.
     await t.db
-      .collection("users")
-      .updateOne({ phone: e164(phone) }, { $set: { lockedUntil: new Date(Date.now() - 1000) } });
+      .update(users)
+      .set({ lockedUntil: new Date(Date.now() - 1000) })
+      .where(eq(users.phone, e164(phone)));
     expect((await login(phone, PASSWORD)).statusCode).toBe(200);
   });
 
@@ -90,9 +94,10 @@ describe("POST /auth/login", () => {
     await login(phone, "Wrong-Password-99");
     await login(phone, PASSWORD);
 
-    const entries = (await t.db.collection("audit_log").find({ action: "login" }).toArray()).filter(
-      (e) => e.userId?.toHexString() === response.user.id,
-    );
+    const entries = await t.db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.action, "login"), eq(auditLog.userId, response.user.id)));
     expect(entries.map((e) => e.identifierMasked)).toEqual([
       `+254******${phone.slice(-3)}`,
       `+254******${phone.slice(-3)}`,

@@ -1,6 +1,8 @@
+import { desc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CLIENT_HEADER, CLIENT_HEADER_VALUE } from "@books/shared";
 import { createTestApp, type TestApp } from "../../../test/test-app";
+import { auditLog } from "../../modules/audit/infrastructure/audit-log.table";
 
 /**
  * Production: internet -> host web server -> container nginx -> API, with
@@ -24,7 +26,14 @@ describe("client IP behind one trusted proxy hop (TRUST_PROXY=1)", () => {
       payload: { identifier, password: "Wrong-Password-99" },
     });
   const lastLoginIp = async () =>
-    (await t.db.collection("audit_log").findOne({ action: "login" }, { sort: { _id: -1 } }))?.ip;
+    (
+      await t.db
+        .select({ ip: auditLog.ip })
+        .from(auditLog)
+        .where(eq(auditLog.action, "login"))
+        .orderBy(desc(auditLog.at))
+        .limit(1)
+    )[0]?.ip;
 
   it("uses the right-most X-Forwarded-For entry, ignoring a forged left-most one", async () => {
     const res = await login("6.6.6.6, 41.90.1.2", "0700000099");

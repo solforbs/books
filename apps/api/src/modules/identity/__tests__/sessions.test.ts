@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sessionResponseSchema } from "@books/shared";
+import { auditLog } from "../../audit/infrastructure/audit-log.table";
+import { refreshSessions } from "../infrastructure/tables/refresh-sessions.table";
 import { PASSWORD, registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
@@ -16,8 +19,9 @@ describe("sessions: me, refresh, logout", () => {
   /** Pretend a refresh token was rotated `ms` ago. */
   const backdateUse = (rt: string, ms: number) =>
     t.db
-      .collection("refresh_sessions")
-      .updateOne({ tokenHash: hashOf(rt) }, { $set: { usedAt: new Date(Date.now() - ms) } });
+      .update(refreshSessions)
+      .set({ usedAt: new Date(Date.now() - ms) })
+      .where(eq(refreshSessions.tokenHash, hashOf(rt)));
 
   it("GET /auth/me returns the session for a logged-in user", async () => {
     const client = new TestClient(t.app);
@@ -80,8 +84,11 @@ describe("sessions: me, refresh, logout", () => {
     expect(me.json().error.code).toBe("session_expired");
     expect((await victim.post("/auth/refresh")).statusCode).toBe(401);
 
-    const reuse = await t.db.collection("audit_log").findOne({ action: "refresh_token_reuse" });
-    expect(reuse).not.toBeNull();
+    const reuse = await t.db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.action, "refresh_token_reuse"));
+    expect(reuse).not.toHaveLength(0);
   });
 
   it("refresh without a cookie, or with garbage, is session_expired and clears cookies", async () => {

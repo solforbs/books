@@ -23,6 +23,8 @@ const trustProxy = z
     return parsed.value;
   });
 
+const postgresUrl = z.string().regex(/^postgres(ql)?:\/\/\S+$/, "must be a postgres:// URL");
+
 /** The placeholder secrets in .env.example all start with this. */
 const PLACEHOLDER_SECRET_PREFIX = "replace-with";
 
@@ -30,7 +32,10 @@ export const appConfigSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-    MONGODB_URI: z.string().regex(/^mongodb(\+srv)?:\/\//, "must be a mongodb:// URI"),
+    /** The API's request role (books_app); row-level security applies to it. */
+    DATABASE_URL: postgresUrl,
+    /** The table owner (books_owner), used only to apply migrations at startup. */
+    DATABASE_MIGRATION_URL: postgresUrl.optional(),
     JWT_ACCESS_SECRET: secret,
     JWT_REFRESH_SECRET: secret,
     COOKIE_SECURE: booleanString,

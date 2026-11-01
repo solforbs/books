@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { Executor } from "../../../common/database/database.types";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import type { ActiveMembership } from "../domain/active-tenant";
 import { refreshExpiry } from "../domain/auth-policy";
@@ -36,8 +37,9 @@ export class SessionIssuer {
     userId: string,
     active: ActiveMembership | null,
     meta: RequestMeta,
+    tx?: Executor,
   ): Promise<IssuedTokens> {
-    return this.issue(family, userId, active, meta);
+    return this.issue(family, userId, active, meta, tx);
   }
 
   /** A new access token only, e.g. after choosing a business. */
@@ -55,18 +57,22 @@ export class SessionIssuer {
     userId: string,
     active: ActiveMembership | null,
     meta: RequestMeta,
+    tx?: Executor,
   ): Promise<IssuedTokens> {
     const refreshToken = this.tokens.newRefreshToken();
-    await this.sessions.create({
-      familyId: family.id,
-      tokenHash: this.tokens.hashRefreshToken(refreshToken),
-      userId,
-      activeTenantId: active?.tenantId ?? null,
-      familyStartedAt: family.startedAt,
-      expiresAt: refreshExpiry(family.startedAt, new Date()),
-      userAgent: meta.userAgent,
-      ip: meta.ip,
-    });
+    await this.sessions.create(
+      {
+        familyId: family.id,
+        tokenHash: this.tokens.hashRefreshToken(refreshToken),
+        userId,
+        activeTenantId: active?.tenantId ?? null,
+        familyStartedAt: family.startedAt,
+        expiresAt: refreshExpiry(family.startedAt, new Date()),
+        userAgent: meta.userAgent,
+        ip: meta.ip,
+      },
+      tx,
+    );
     const accessToken = await this.accessToken(family.id, userId, active);
     return { accessToken, refreshToken };
   }

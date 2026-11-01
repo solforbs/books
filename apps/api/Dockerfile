@@ -11,8 +11,6 @@ RUN corepack enable
 # ---- build: install everything, compile shared + api, then extract prod deps ----
 FROM base AS build
 WORKDIR /repo
-# Tests are not run in the image, so skip the large MongoDB test binary download.
-ENV MONGOMS_DISABLE_POSTINSTALL=1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
@@ -24,7 +22,7 @@ RUN pnpm --filter @books/shared build \
  && pnpm --filter @books/api build \
  && pnpm --filter @books/api deploy --prod /out
 
-# ---- runtime: production dependencies + compiled code only, non-root ----
+# ---- runtime: production dependencies, compiled code and SQL migrations (drizzle/), non-root ----
 FROM node:22-slim AS runtime
 ENV NODE_ENV=production
 ENV PORT=3000

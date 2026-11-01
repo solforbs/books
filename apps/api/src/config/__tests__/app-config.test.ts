@@ -3,7 +3,7 @@ import { loadAppConfig } from "../app-config";
 import { toFastifyTrustProxy } from "../trust-proxy";
 
 const valid = {
-  MONGODB_URI: "mongodb://localhost:27017/books?replicaSet=rs0",
+  DATABASE_URL: "postgres://books_app:pw@127.0.0.1:5433/books",
   JWT_ACCESS_SECRET: "a".repeat(32),
   JWT_REFRESH_SECRET: "b".repeat(32),
   WEB_ORIGIN: "http://localhost:5173",
@@ -27,7 +27,17 @@ describe("loadAppConfig", () => {
   });
 
   it("fails fast on missing or weak values, without echoing secrets", () => {
-    expect(() => loadAppConfig({})).toThrow(/MONGODB_URI/);
+    expect(() => loadAppConfig({})).toThrow(/DATABASE_URL/);
+    expect(() => loadAppConfig({ ...valid, DATABASE_URL: "mongodb://localhost/books" })).toThrow(
+      /DATABASE_URL: must be a postgres:\/\/ URL/,
+    );
+    expect(() => loadAppConfig({ ...valid, DATABASE_MIGRATION_URL: "nope" })).toThrow(
+      /DATABASE_MIGRATION_URL/,
+    );
+    expect(
+      loadAppConfig({ ...valid, DATABASE_MIGRATION_URL: "postgresql://o:p@db/books" })
+        .DATABASE_MIGRATION_URL,
+    ).toBe("postgresql://o:p@db/books");
     expect(() => loadAppConfig({ ...valid, JWT_ACCESS_SECRET: "short-secret" })).toThrow(
       /JWT_ACCESS_SECRET: must be at least 32 characters/,
     );

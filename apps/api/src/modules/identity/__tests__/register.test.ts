@@ -1,8 +1,12 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerResponseSchema } from "@books/shared";
 import { PASSWORD, e164, randomEmail, randomPhone, registration } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
+import { auditLog } from "../../audit/infrastructure/audit-log.table";
+import { recoveryCodes as recoveryCodesTable } from "../infrastructure/tables/recovery-codes.table";
+import { users } from "../infrastructure/tables/users.table";
 
 describe("POST /auth/register", () => {
   let t: TestApp;
@@ -103,16 +107,19 @@ describe("POST /auth/register", () => {
     const res = await new TestClient(t.app).post("/auth/register", registration({ phone }));
     const { user, recoveryCodes } = res.json();
 
-    const stored = await t.db.collection("users").findOne({ phone: e164(phone) });
+    const [stored] = await t.db
+      .select()
+      .from(users)
+      .where(eq(users.phone, e164(phone)));
     expect(stored!.passwordHash).toMatch(/^\$argon2id\$/);
     expect(JSON.stringify(stored)).not.toContain(PASSWORD);
 
-    const codes = await t.db.collection("recovery_codes").find().toArray();
+    const codes = await t.db.select().from(recoveryCodesTable);
     const dump = JSON.stringify(codes);
     for (const code of recoveryCodes as string[]) expect(dump).not.toContain(code);
 
-    const audit = await t.db.collection("audit_log").find({ action: "register" }).toArray();
-    const mine = audit.find((a) => a.userId?.toHexString() === user.id)!;
+    const audit = await t.db.select().from(auditLog).where(eq(auditLog.action, "register"));
+    const mine = audit.find((a) => a.userId === user.id)!;
     expect(mine.identifierMasked).toBe(`+254******${phone.slice(-3)}`);
     expect(JSON.stringify(audit)).not.toContain(e164(phone));
   });

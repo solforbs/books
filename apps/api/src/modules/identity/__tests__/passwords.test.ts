@@ -1,5 +1,7 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { NEW_PASSWORD, PASSWORD, e164, registerOwner } from "../../../../test/fixtures";
+import { users } from "../infrastructure/tables/users.table";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
 
@@ -19,8 +21,9 @@ describe("change-password and recover", () => {
       const { request } = await registerOwner(client);
       const phone = request.phone!;
       await t.db
-        .collection("users")
-        .updateOne({ phone: e164(phone) }, { $set: { mustChangePassword: true } });
+        .update(users)
+        .set({ mustChangePassword: true })
+        .where(eq(users.phone, e164(phone)));
       const otherDevice = new TestClient(t.app);
       await otherDevice.post("/auth/login", { identifier: phone, password: PASSWORD });
       expect((await client.get("/auth/me")).json().user.mustChangePassword).toBe(true);

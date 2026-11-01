@@ -4,7 +4,8 @@
   "private": true,
   "description": "Books API: NestJS (Fastify) modular monolith",
   "files": [
-    "dist"
+    "dist",
+    "drizzle"
   ],
   "scripts": {
     "dev": "nest start --watch",
@@ -12,7 +13,8 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dev:db": "node scripts/dev-db.mjs"
+    "dev:db": "node scripts/dev-db.mjs",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@books/shared": "workspace:*",
@@ -21,12 +23,12 @@
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/jwt": "^11.0.0",
-    "@nestjs/mongoose": "^11.0.3",
     "@nestjs/platform-fastify": "^11.1.0",
     "@nestjs/throttler": "^6.4.0",
     "argon2": "^0.41.1",
+    "drizzle-orm": "^0.45.4",
     "fastify": "5.12.7",
-    "mongoose": "^8.13.2",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.6"
@@ -36,7 +38,9 @@
     "@nestjs/testing": "^11.1.0",
     "@swc/core": "^1.11.21",
     "@types/node": "^22.15.0",
-    "mongodb-memory-server": "^10.1.4",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "embedded-postgres": "17.11.0-beta.19",
     "typescript": "^5.7.2",
     "unplugin-swc": "^1.5.1",
     "vitest": "^3.2.4"

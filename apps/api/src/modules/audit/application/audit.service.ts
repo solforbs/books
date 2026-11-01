@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { toObjectId } from "../../../common/database/object-id";
+import { isUuid } from "../../../common/database/uuid";
+import { safeErrorMessage } from "../../../common/errors/safe-error-message";
 import { maskIdentifier } from "../../../common/security/mask";
 import { AuditRepository } from "../infrastructure/audit.repository";
 
@@ -15,7 +16,7 @@ export interface AuditEvent {
   userAgent?: string;
 }
 
-/** Public interface of the audit module. Other modules call this, never the collection. */
+/** Public interface of the audit module. Other modules call this, never the table. */
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
@@ -28,15 +29,15 @@ export class AuditService {
       await this.repo.insert({
         action: event.action,
         outcome: event.outcome,
-        tenantId: event.tenantId ? toObjectId(event.tenantId) : null,
-        userId: event.userId ? toObjectId(event.userId) : null,
+        tenantId: isUuid(event.tenantId) ? event.tenantId : null,
+        userId: isUuid(event.userId) ? event.userId : null,
         identifierMasked: event.identifier ? maskIdentifier(event.identifier) : null,
         reason: event.reason ?? null,
         ip: event.ip ?? null,
         userAgent: event.userAgent ?? null,
       });
     } catch (err) {
-      this.logger.error(`audit write failed for ${event.action}: ${(err as Error).message}`);
+      this.logger.error(`audit write failed for ${event.action}: ${safeErrorMessage(err)}`);
     }
   }
 }

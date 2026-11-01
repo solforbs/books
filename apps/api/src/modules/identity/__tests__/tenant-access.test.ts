@@ -1,14 +1,17 @@
 import type { ExecutionContext } from "@nestjs/common";
-import { Types } from "mongoose";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
+import { auditLog } from "../../audit/infrastructure/audit-log.table";
 import type { AppError } from "../../../common/errors/app-error";
 import { RequireTenantGuard } from "../api/require-tenant.guard";
 import { IdentityService } from "../application/identity.service";
 import { TENANT_ACCESS_CACHE_MS, TenantAccess } from "../application/tenant-access";
 import type { AuthContext } from "../domain/auth-context";
+import { memberships } from "../infrastructure/tables/memberships.table";
+import { tenants } from "../infrastructure/tables/tenants.table";
 
 describe("tenant access is checked against the database (M3)", () => {
   let t: TestApp;
@@ -32,13 +35,15 @@ describe("tenant access is checked against the database (M3)", () => {
     const { response } = await registerOwner(new TestClient(t.app));
     return { userId: response.user.id, tenantId: response.activeTenantId! };
   };
-  const setMembership = (userId: string, tenantId: string, set: Record<string, unknown>) =>
+  const setMembership = (
+    userId: string,
+    tenantId: string,
+    set: Partial<typeof memberships.$inferInsert>,
+  ) =>
     t.db
-      .collection("memberships")
-      .updateOne(
-        { userId: new Types.ObjectId(userId), tenantId: new Types.ObjectId(tenantId) },
-        { $set: set },
-      );
+      .update(memberships)
+      .set(set)
+      .where(and(eq(memberships.userId, userId), eq(memberships.tenantId, tenantId)));
 
   it("takes the role from the membership record, ignoring the token's claim", async () => {
     const { userId, tenantId } = await owner();
@@ -61,9 +66,7 @@ describe("tenant access is checked against the database (M3)", () => {
     expect(
       await guard({ ...a, tenantId: b.tenantId, role: "owner", sessionId: "s" }),
     ).toMatchObject({ ok: false, code: "not_a_member" });
-    await t.db
-      .collection("tenants")
-      .updateOne({ _id: new Types.ObjectId(a.tenantId) }, { $set: { status: "disabled" } });
+    await t.db.update(tenants).set({ status: "disabled" }).where(eq(tenants.id, a.tenantId));
     expect(await guard({ ...a, role: "owner", sessionId: "s" })).toMatchObject({
       ok: false,
       code: "not_a_member",
@@ -97,7 +100,10 @@ describe("tenant access is checked against the database (M3)", () => {
       expect((await client.post("/auth/refresh")).statusCode).toBe(401);
     }
     expect((await bystander.get("/auth/me")).statusCode).toBe(200);
-    const entry = await t.db.collection("audit_log").findOne({ action: "sessions_revoked" });
+    const [entry] = await t.db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.action, "sessions_revoked"));
     expect(entry).toMatchObject({ reason: "membership_disabled", outcome: "success" });
   });
 });

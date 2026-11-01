@@ -4,16 +4,16 @@ Inventory-first shop app for Kenyan traders. Product specs live in `research/fea
 
 ## Stack
 
-- pnpm monorepo: `apps/api` (NestJS on Fastify, MongoDB via Mongoose), `apps/web` (React + Vite PWA), `packages/shared` (Zod contracts, money, IMEI, phone, password policy).
+- pnpm monorepo: `apps/api` (NestJS on Fastify, PostgreSQL via Drizzle ORM), `apps/web` (React + Vite PWA), `packages/shared` (Zod contracts, money, IMEI, phone, password policy).
 - TypeScript strict everywhere. Node >= 22.
 
 ## House rules
 
 1. **One responsibility per file.** Target < 200 lines; ESLint fails above 300.
-2. **API layering per module:** `api/` (controllers + DTO wiring, no logic) → `application/` (one use case per file) → `domain/` (pure rules, no I/O) → `infrastructure/` (Mongoose schemas, repositories). Modules never touch another module's collections; they call its exported service.
+2. **API layering per module:** `api/` (controllers + DTO wiring, no logic) → `application/` (one use case per file) → `domain/` (pure rules, no I/O) → `infrastructure/` (Drizzle `*.table.ts` schemas, repositories). Modules never touch another module's tables; they call its exported service. Schema changes: edit the `*.table.ts`, run `pnpm --filter @books/api db:generate`, commit the SQL in `apps/api/drizzle/` (grants and row-level security go in a custom migration).
 3. **Contracts first:** request/response shapes live in `packages/shared/src/contracts`. Both apps import them; never duplicate shapes.
 4. **Money is integer cents** (`Cents` from `@books/shared`). Never floats.
-5. **Multi-tenant:** every tenant-owned document has `tenantId`; every query goes through a repository that requires a `tenantId`. Write a test proving cross-tenant access fails.
+5. **Multi-tenant:** every tenant-owned table has a `tenant_id`, its repository extends `TenantScopedRepository` (every query requires a `tenantId`), and its migration calls `enable_tenant_rls(...)` so PostgreSQL row-level security is a second guard. Write a test proving cross-tenant access fails.
 6. **Nothing is deleted** (G4): use status fields and reversing entries.
 7. **Idempotent writes:** state-changing commands from devices carry a client `commandId`.
 8. **No hard-coded UI text:** every string goes through i18next (`en` and `so`).
@@ -25,6 +25,6 @@ Inventory-first shop app for Kenyan traders. Product specs live in `research/fea
 
 ## Commands
 
-- `pnpm install`, then **`pnpm dev`** starts everything locally (no Docker): database (port 27018, data kept in `apps/api/.data/`), API (3000) and web app (http://localhost:5173). The first start is slow (it downloads MongoDB once and compiles).
+- `pnpm install`, then **`pnpm dev`** starts everything locally (no Docker): embedded PostgreSQL 17 (127.0.0.1:5433, data kept in `apps/api/.data/postgres`), API (3000, applies migrations at startup) and web app (http://localhost:5173). The first start is slower (it creates the database cluster and compiles).
 - Local settings live in `apps/api/.env` (not committed; copy `apps/api/.env.example` on a new machine). Docker is only used for the VPS (`deploy/`).
 - `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build`

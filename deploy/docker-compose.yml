@@ -1,7 +1,7 @@
 # Production stack for books.solforbs.com on the shared VPS (4 CPU / 6 GB RAM).
 # The VPS already runs other software, so this stack exposes ONE port on localhost only
 # (127.0.0.1:8088). The VPS's existing web server forwards books.solforbs.com to it
-# and handles HTTPS. MongoDB is never reachable from outside the Docker network.
+# and handles HTTPS. PostgreSQL is never reachable from outside the Docker network.
 #
 # Usage (on the VPS, from the repo root):
 #   cp deploy/.env.example deploy/.env   # then fill in secrets
@@ -10,29 +10,46 @@
 name: books
 
 services:
-  mongo:
-    image: mongo:7
-    command: ["--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.5"]
+  postgres:
+    image: postgres:17-alpine
     restart: unless-stopped
+    environment:
+      # Superuser: administration and backups only, never used by the API.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in deploy/.env}
+      POSTGRES_DB: books
+      # Read once by postgres/initdb/10-books-roles.sh on the very first start.
+      BOOKS_OWNER_PASSWORD: ${BOOKS_OWNER_PASSWORD:?set in deploy/.env}
+      BOOKS_APP_PASSWORD: ${BOOKS_APP_PASSWORD:?set in deploy/.env}
+    # Sized for the 1 GB limit below.
+    command:
+      [
+        "postgres",
+        "-c",
+        "shared_buffers=256MB",
+        "-c",
+        "effective_cache_size=640MB",
+        "-c",
+        "work_mem=8MB",
+        "-c",
+        "maintenance_work_mem=64MB",
+        "-c",
+        "max_connections=60",
+      ]
     volumes:
-      - mongo-data:/data/db
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      # Initialise the single-node replica set on first start (transactions need it).
-      test:
-        [
-          "CMD",
-          "mongosh",
-          "--quiet",
-          "--eval",
-          "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }",
-        ]
+      # Over TCP on purpose: during first-time setup the server listens on its socket only.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d books"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 12
+      start_period: 30s
     deploy:
       resources:
         limits:
-          memory: 1200m
+          memory: 1g
     # Only the API can reach the database; the web container cannot.
     networks: [data]
 
@@ -42,12 +59,15 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: "3000"
-      MONGODB_URI: mongodb://mongo:27017/books?replicaSet=rs0
+      # Requests run as the restricted books_app role (row-level security applies);
+      # migrations run at startup as the table owner, books_owner.
+      DATABASE_URL: postgres://books_app:${BOOKS_APP_PASSWORD:?set in deploy/.env}@postgres:5432/books
+      DATABASE_MIGRATION_URL: postgres://books_owner:${BOOKS_OWNER_PASSWORD:?set in deploy/.env}@postgres:5432/books
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set in deploy/.env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set in deploy/.env}
       COOKIE_SECURE: "true"
@@ -75,7 +95,7 @@ services:
     networks: [edge]
 
 volumes:
-  mongo-data:
+  postgres-data:
 
 networks:
   edge:

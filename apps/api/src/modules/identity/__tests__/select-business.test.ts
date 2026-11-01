@@ -1,9 +1,11 @@
-import { Types } from "mongoose";
+import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SessionResponse } from "@books/shared";
 import { PASSWORD, registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
+import { memberships } from "../infrastructure/tables/memberships.table";
 
 describe("multi-business users and POST /auth/select-business", () => {
   let t: TestApp;
@@ -22,13 +24,11 @@ describe("multi-business users and POST /auth/select-business", () => {
     shopB = b.response.activeTenantId!;
     strangerShop = c.response.activeTenantId!;
     // The owner of Alpha is also a manager at Beta (staff invites arrive in F02).
-    await t.db.collection("memberships").insertOne({
-      userId: new Types.ObjectId(a.response.user.id),
-      tenantId: new Types.ObjectId(shopB),
+    await t.db.insert(memberships).values({
+      userId: a.response.user.id,
+      tenantId: shopB,
       role: "manager",
       status: "active",
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
   });
   afterAll(() => t.close());
@@ -67,7 +67,7 @@ describe("multi-business users and POST /auth/select-business", () => {
 
   it("refuses a business the user is not a member of", async () => {
     const { client } = await loginMulti();
-    for (const tenantId of [strangerShop, new Types.ObjectId().toHexString(), "not-an-id"]) {
+    for (const tenantId of [strangerShop, randomUUID(), "not-an-id"]) {
       const res = await client.post("/auth/select-business", { tenantId });
       expect(res.statusCode).toBe(403);
       expect(res.json().error.code).toBe("not_a_member");
@@ -77,22 +77,13 @@ describe("multi-business users and POST /auth/select-business", () => {
 
   it("refuses a disabled membership", async () => {
     const { client } = await loginMulti();
-    await t.db
-      .collection("memberships")
-      .updateOne(
-        { tenantId: new Types.ObjectId(shopB), role: "manager" },
-        { $set: { status: "disabled" } },
-      );
+    const managerAtB = and(eq(memberships.tenantId, shopB), eq(memberships.role, "manager"));
+    await t.db.update(memberships).set({ status: "disabled" }).where(managerAtB);
     try {
       const res = await client.post("/auth/select-business", { tenantId: shopB });
       expect(res.json().error.code).toBe("not_a_member");
     } finally {
-      await t.db
-        .collection("memberships")
-        .updateOne(
-          { tenantId: new Types.ObjectId(shopB), role: "manager" },
-          { $set: { status: "active" } },
-        );
+      await t.db.update(memberships).set({ status: "active" }).where(managerAtB);
     }
   });
 

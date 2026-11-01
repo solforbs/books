@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { isStrongPassword, type changePasswordRequestSchema } from "@books/shared";
 import type { z } from "zod";
+import { DB, type Database } from "../../../common/database/database.types";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import { AuditService } from "../../audit/application/audit.service";
 import type { AuthContext } from "../domain/auth-context";
@@ -22,6 +23,7 @@ export type ChangePasswordInput = z.output<typeof changePasswordRequestSchema>;
 @Injectable()
 export class ChangePasswordUseCase {
   constructor(
+    @Inject(DB) private readonly db: Database,
     private readonly users: UsersRepository,
     private readonly hasher: PasswordHasher,
     private readonly attempts: PasswordAttempts,
@@ -53,8 +55,11 @@ export class ChangePasswordUseCase {
       throw IdentityErrors.weakPassword();
     }
 
-    await this.users.setPassword(auth.userId, await this.hasher.hash(input.newPassword));
-    await this.sessions.revokeAllForUser(auth.userId, auth.sessionId);
+    const newHash = await this.hasher.hash(input.newPassword);
+    await this.db.transaction(async (tx) => {
+      await this.users.setPassword(auth.userId, newHash, tx);
+      await this.sessions.revokeAllForUser(auth.userId, auth.sessionId, tx);
+    });
     await this.audit.record({
       action: "change_password",
       outcome: "success",

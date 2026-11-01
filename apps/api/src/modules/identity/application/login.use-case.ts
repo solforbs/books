@@ -50,10 +50,10 @@ export class LoginUseCase {
     if (!user || user.status !== "active") {
       // argon2 dominates both paths; the known-user path's one extra write is noise.
       await this.hasher.verifyAgainstDummy(input.password);
-      await fail(user ? "user_disabled" : "unknown_user", user?._id.toHexString());
+      await fail(user ? "user_disabled" : "unknown_user", user?.id);
       throw IdentityErrors.invalidCredentials();
     }
-    const userId = user._id.toHexString();
+    const userId = user.id;
     const attempt = await this.attempts.check(userId, input.password, now);
     if (attempt.outcome === "locked") {
       await fail("locked", userId);

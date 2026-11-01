@@ -1,26 +1,25 @@
-import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import type { ClientSession, Model } from "mongoose";
-import { toObjectId } from "../../../common/database/object-id";
-import { TENANT_MODEL, type TenantDoc } from "./schemas/tenant.schema";
+import { Inject, Injectable } from "@nestjs/common";
+import { and, eq, inArray } from "drizzle-orm";
+import { DB, type Database, type Executor } from "../../../common/database/database.types";
+import { isUuid } from "../../../common/database/uuid";
+import { tenants, type TenantRow } from "./tables/tenants.table";
 
 @Injectable()
 export class TenantsRepository {
-  constructor(@InjectModel(TENANT_MODEL) private readonly model: Model<TenantDoc>) {}
+  constructor(@Inject(DB) private readonly db: Database) {}
 
-  async create(name: string, createdBy: string, session: ClientSession): Promise<TenantDoc> {
-    const [created] = await this.model.create([{ name, createdBy: toObjectId(createdBy) }], {
-      session,
-    });
-    return created!.toObject();
+  async create(name: string, createdBy: string, tx: Executor): Promise<TenantRow> {
+    const [created] = await tx.insert(tenants).values({ name, createdBy }).returning();
+    return created!;
   }
 
   /** Active businesses by id, for building the membership list. */
-  async findActiveByIds(ids: string[]): Promise<TenantDoc[]> {
-    if (ids.length === 0) return [];
-    return this.model
-      .find({ _id: { $in: ids.map(toObjectId) }, status: "active" })
-      .lean<TenantDoc[]>()
-      .exec();
+  async findActiveByIds(ids: string[]): Promise<TenantRow[]> {
+    const valid = ids.filter(isUuid);
+    if (valid.length === 0) return [];
+    return this.db
+      .select()
+      .from(tenants)
+      .where(and(inArray(tenants.id, valid), eq(tenants.status, "active")));
   }
 }
