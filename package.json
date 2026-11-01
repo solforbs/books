@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "dev": "pnpm --filter @books/shared build && concurrently -k -n db,api,web -c blue,green,magenta \"pnpm --filter @books/api dev:db\" \"wait-on -t 120000 tcp:127.0.0.1:27018 && pnpm dev:api\" \"pnpm dev:web\"",
     "dev:api": "pnpm --filter @books/api dev",
     "dev:web": "pnpm --filter @books/web dev",
     "build": "pnpm -r build",
@@ -19,12 +20,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "concurrently": "^10.0.6",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.18.2"
+    "typescript-eslint": "^8.18.2",
+    "wait-on": "^9.5.1"
   },
   "pnpm": {
     "overrides": {

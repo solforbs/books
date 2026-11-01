@@ -25,5 +25,6 @@ Inventory-first shop app for Kenyan traders. Product specs live in `research/fea
 
 ## Commands
 
-- `pnpm install` · `pnpm dev:api` · `pnpm dev:web`
+- `pnpm install`, then **`pnpm dev`** starts everything locally (no Docker): database (port 27018, data kept in `apps/api/.data/`), API (3000) and web app (http://localhost:5173). The first start is slow (it downloads MongoDB once and compiles).
+- Local settings live in `apps/api/.env` (not committed; copy `apps/api/.env.example` on a new machine). Docker is only used for the VPS (`deploy/`).
 - `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build`

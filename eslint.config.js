@@ -13,6 +13,7 @@ export default tseslint.config(
       "**/dev-dist/**",
       "research/**",
       ".claude/**",
+      "**/.data/**",
     ],
   },
   js.configs.recommended,
