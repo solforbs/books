@@ -50,9 +50,10 @@ git pull && docker compose -f deploy/docker-compose.yml --env-file deploy/.env u
 
 ## 4. Backups (set up before real shops use it)
 
-Nightly dump (cron), kept for 14 days. **Copy the dumps off the VPS as well** (another server or cloud storage). `pg_dump` takes a consistent snapshot while the app keeps running:
+Nightly dump (cron), kept for 14 days. **Copy the dumps off the VPS as well** (another server or cloud storage), **encrypted** (for example with `gpg --symmetric`). `pg_dump` takes a consistent snapshot while the app keeps running. The dumps contain password hashes, phone numbers and emails, so only root may read them:
 
 ```bash
+umask 077 && mkdir -p /backups && chmod 700 /backups
 docker compose -f deploy/docker-compose.yml exec -T postgres \
   pg_dump -U postgres -d books --format=custom > /backups/books-$(date +%F).dump
 find /backups -name 'books-*.dump' -mtime +14 -delete
@@ -69,8 +70,8 @@ docker compose -f deploy/docker-compose.yml start api
 
 Test a restore now and then; a backup that was never restored is only a hope.
 
-Changing a database password: update `deploy/.env`, then
-`docker compose -f deploy/docker-compose.yml exec postgres psql -U postgres -c "ALTER ROLE books_app PASSWORD '<new>'"` (or `books_owner`), then `up -d` again.
+Changing a database password: update `deploy/.env`, then open a database prompt with
+`docker compose -f deploy/docker-compose.yml exec postgres psql -U postgres`, type `\password books_app` (or `books_owner`) and enter the new value when asked, so it never lands in shell history. Then run `up -d` again.
 
 ## 5. Security notes
 
