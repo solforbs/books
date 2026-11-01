@@ -1,141 +1,132 @@
-import { randomBytes } from "node:crypto";
-import mongoose, { Schema, Types, type Connection, type Model } from "mongoose";
+import { randomUUID } from "node:crypto";
+import { eq, or, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { inject } from "vitest";
-import { cents, type Cents } from "@books/shared";
+import { cents } from "@books/shared";
+import { TenantDb } from "../tenant-db";
+import { TenantScopedRepository, assertTenantIdUntouched } from "../tenant-scoped.repository";
 import {
-  TenantScopedRepository,
-  assertTenantIdUntouched,
-  type TenantOwned,
-} from "../tenant-scoped.repository";
+  createWidgetsDb,
+  widgets,
+  widgetsNoRls,
+  type WidgetTable,
+  type WidgetsDb,
+} from "./widgets.fixture";
 
-interface WidgetDoc extends TenantOwned {
-  name: string;
-  priceCents: Cents;
-}
-
-const widgetSchema = new Schema<WidgetDoc>({
-  tenantId: { type: Schema.Types.ObjectId, required: true, index: true },
-  name: { type: String, required: true },
-  priceCents: { type: Number, required: true, validate: Number.isSafeInteger },
-});
-
-class WidgetRepository extends TenantScopedRepository<WidgetDoc> {
-  constructor(model: Model<WidgetDoc>) {
-    super(model);
+class WidgetRepository<T extends WidgetTable> extends TenantScopedRepository<T> {
+  constructor(tenantDb: TenantDb, table: T) {
+    super(tenantDb, table);
   }
 }
 
-describe("TenantScopedRepository: one business can never see another's data", () => {
-  let conn: Connection;
-  let repo: WidgetRepository;
-  const tenantA = new Types.ObjectId().toHexString();
-  const tenantB = new Types.ObjectId().toHexString();
-  let widgetB: WidgetDoc;
+describe.each([
+  ["with row-level security", widgets],
+  ["repository guard alone (no row-level security)", widgetsNoRls],
+] as const)("TenantScopedRepository, %s: one business never sees another's data", (_, table) => {
+  let wdb: WidgetsDb;
+  let tenantDb: TenantDb;
+  let repo: WidgetRepository<WidgetTable>;
+  const tenantA = randomUUID();
+  const tenantB = randomUUID();
+  let widgetB: typeof widgets.$inferSelect;
 
   beforeAll(async () => {
-    const url = new URL(inject("mongoUri"));
-    url.pathname = `/tenancy_${randomBytes(6).toString("hex")}`;
-    conn = await mongoose.createConnection(url.toString()).asPromise();
-    repo = new WidgetRepository(conn.model<WidgetDoc>("Widget", widgetSchema));
+    wdb = await createWidgetsDb();
+    // The app's restricted role, exactly like the API at runtime.
+    tenantDb = new TenantDb(drizzle(wdb.pool("app")));
+    repo = new WidgetRepository<WidgetTable>(tenantDb, table);
     await repo.create(tenantA, { name: "A phone", priceCents: cents(1_250_050) });
     widgetB = await repo.create(tenantB, { name: "B phone", priceCents: cents(999_900) });
   });
-  afterAll(async () => {
-    await conn.dropDatabase();
-    await conn.close();
-  });
+  afterAll(() => wdb.close());
 
-  it("stamps the tenant on create and stores money as integer cents", async () => {
-    expect(widgetB.tenantId.toHexString()).toBe(tenantB);
+  it("stamps the tenant on create and stores money as integer cents (bigint)", () => {
+    expect(widgetB.tenantId).toBe(tenantB);
     expect(widgetB.priceCents).toBe(999_900);
   });
 
-  it("findById cannot fetch another tenant's document", async () => {
-    const id = widgetB._id.toHexString();
-    expect(await repo.findById(tenantA, id)).toBeNull();
-    expect((await repo.findById(tenantB, id))?.name).toBe("B phone");
+  it("findById cannot fetch another tenant's row", async () => {
+    expect(await repo.findById(tenantA, widgetB.id)).toBeNull();
+    expect((await repo.findById(tenantB, widgetB.id))?.name).toBe("B phone");
+    expect(await repo.findById(tenantA, "not-a-uuid")).toBeNull();
   });
 
   it("find, findOne and count only see the caller's tenant", async () => {
     expect((await repo.find(tenantA)).map((w) => w.name)).toEqual(["A phone"]);
-    expect(await repo.findOne(tenantA, { name: "B phone" })).toBeNull();
+    expect(await repo.findOne(tenantA, eq(table.name, "B phone"))).toBeNull();
     expect(await repo.count(tenantA)).toBe(1);
   });
 
-  it("a tenantId smuggled into the filter is overridden", async () => {
-    const smuggled = { tenantId: new Types.ObjectId(tenantB) };
-    expect(await repo.find(tenantA, smuggled)).toHaveLength(1);
-    expect((await repo.find(tenantA, smuggled))[0]!.name).toBe("A phone");
-    expect(await repo.findOne(tenantA, { name: "B phone", ...smuggled })).toBeNull();
+  it("a filter can narrow but never widen the result", async () => {
+    expect(await repo.find(tenantA, eq(table.tenantId, tenantB))).toEqual([]);
+    const widened = [sql`true or true`, or(eq(table.tenantId, tenantB), sql`true`)!];
+    for (const where of widened) {
+      expect((await repo.find(tenantA, where)).map((w) => w.name)).toEqual(["A phone"]);
+      expect(await repo.count(tenantA, where)).toBe(1);
+    }
   });
 
-  it("updateOne cannot touch another tenant's document", async () => {
-    const matched = await repo.updateOne(
-      tenantA,
-      { _id: widgetB._id },
-      { $set: { name: "hacked" } },
-    );
-    expect(matched).toBe(0);
-    expect((await repo.findById(tenantB, widgetB._id.toHexString()))?.name).toBe("B phone");
+  it("a tenantId smuggled into create is overwritten with the caller's", async () => {
+    const values = { name: "smuggled", priceCents: cents(1), tenantId: tenantB } as never;
+    const created = await repo.create(tenantA, values);
+    expect(created.tenantId).toBe(tenantA);
   });
 
-  const otherTenant = new Types.ObjectId(tenantA);
+  it("update cannot touch another tenant's row", async () => {
+    expect(await repo.update(tenantA, eq(table.id, widgetB.id), { name: "hacked" })).toBe(0);
+    expect(await repo.update(tenantA, sql`true or true`, { name: "hacked" })).toBeGreaterThan(0);
+    expect((await repo.findById(tenantB, widgetB.id))?.name).toBe("B phone");
+  });
+
   it.each([
-    ["$set", { $set: { tenantId: otherTenant, name: "moved" } }],
-    ["$set dotted path", { $set: { "tenantId.x": 1 } }],
-    ["bare field", { tenantId: otherTenant }],
-    ["$unset", { $unset: { tenantId: "" } }],
-    ["$rename from tenantId", { $rename: { tenantId: "oldTenant" } }],
-    ["$rename into tenantId", { $rename: { name: "tenantId" } }],
-    ["$rename into tenantId.*", { $rename: { name: "tenantId.sub" } }],
-    ["$setOnInsert", { $setOnInsert: { tenantId: otherTenant } }],
-    ["$min", { $min: { tenantId: otherTenant } }],
-    ["$max", { $max: { tenantId: otherTenant } }],
-    ["$currentDate", { $currentDate: { tenantId: true } }],
-    ["$push", { $push: { tenantId: otherTenant } }],
-    ["$addToSet", { $addToSet: { "tenantId.list": 1 } }],
-    ["$inc", { $inc: { tenantId: 1 } }],
-  ])("updateOne refuses an update touching tenantId via %s", async (_, update) => {
-    await expect(repo.updateOne(tenantB, { _id: widgetB._id }, update as never)).rejects.toThrow(
-      "tenantId cannot be changed",
+    ["tenantId", { tenantId: randomUUID() }, "tenantId cannot be changed"],
+    ["tenantId next to other fields", { name: "moved", tenantId: randomUUID() }, "tenantId"],
+    ["id", { id: randomUUID() }, "id cannot be changed"],
+  ])("update refuses a change of %s", async (_, set, message) => {
+    await expect(repo.update(tenantB, eq(table.id, widgetB.id), set as never)).rejects.toThrow(
+      message,
     );
-    const after = await repo.findById(tenantB, widgetB._id.toHexString());
-    expect(after?.tenantId.toHexString()).toBe(tenantB);
-    expect(after?.name).toBe("B phone");
+    const after = await repo.findById(tenantB, widgetB.id);
+    expect(after).toMatchObject({ tenantId: tenantB, name: "B phone", id: widgetB.id });
   });
 
-  it("updateOne refuses aggregation-pipeline updates", async () => {
-    const pipeline = [{ $set: { tenantId: otherTenant } }];
-    await expect(repo.updateOne(tenantB, { _id: widgetB._id }, pipeline as never)).rejects.toThrow(
-      "Pipeline updates are not allowed",
-    );
-    const after = await repo.findById(tenantB, widgetB._id.toHexString());
-    expect(after?.tenantId.toHexString()).toBe(tenantB);
-  });
-
-  it("updateOne still allows ordinary updates of the caller's own document", async () => {
-    const matched = await repo.updateOne(
-      tenantB,
-      { _id: widgetB._id },
-      { $set: { name: "renamed" }, $inc: { priceCents: 100 } },
-    );
-    expect(matched).toBe(1);
-    const after = await repo.findById(tenantB, widgetB._id.toHexString());
-    expect(after?.name).toBe("renamed");
-    expect(after?.tenantId.toHexString()).toBe(tenantB);
-    await repo.updateOne(tenantB, { _id: widgetB._id }, { $set: { name: "B phone" } });
-    // Only the exact field and its sub-paths are guarded, not look-alike names.
-    expect(() => assertTenantIdUntouched({ $set: { tenantIdNote: "x" } })).not.toThrow();
+  it("update still allows ordinary changes of the caller's own row", async () => {
+    const bump = { name: "renamed", priceCents: sql`${table.priceCents} + 100` as never };
+    expect(await repo.update(tenantB, eq(table.id, widgetB.id), bump)).toBe(1);
+    expect(await repo.findById(tenantB, widgetB.id)).toMatchObject({
+      name: "renamed",
+      priceCents: 1_000_000,
+      tenantId: tenantB,
+    });
+    await repo.update(tenantB, eq(table.id, widgetB.id), { name: "B phone" });
+    // Only the exact field is guarded, not look-alike names.
+    expect(() => assertTenantIdUntouched(table, { tenantIdNote: "x" })).not.toThrow();
   });
 
   it("refuses to run without a valid tenantId", async () => {
     await expect(repo.find("")).rejects.toThrow("tenantId is required");
     await expect(repo.count("not-an-id")).rejects.toThrow("tenantId is required");
+    await expect(tenantDb.transaction("x", async () => 1)).rejects.toThrow("tenantId is required");
+  });
+
+  it("enlists in the caller's tenant transaction, and refuses another tenant's", async () => {
+    const before = await repo.count(tenantA);
+    await expect(
+      tenantDb.transaction(tenantA, async (tx) => {
+        await repo.create(tenantA, { name: "draft", priceCents: cents(5) }, tx);
+        expect(await repo.count(tenantA, undefined, tx)).toBe(before + 1);
+        throw new Error("abort");
+      }),
+    ).rejects.toThrow("abort");
+    expect(await repo.count(tenantA)).toBe(before);
+
+    await expect(
+      tenantDb.transaction(tenantA, (tx) => repo.find(tenantB, undefined, {}, tx)),
+    ).rejects.toThrow("transaction belongs to another tenant");
   });
 
   it("has no delete method (G4: nothing is deleted)", () => {
-    expect("deleteOne" in repo).toBe(false);
-    expect("deleteMany" in repo).toBe(false);
+    for (const name of ["delete", "deleteOne", "deleteMany", "remove"])
+      expect(name in repo).toBe(false);
   });
 });

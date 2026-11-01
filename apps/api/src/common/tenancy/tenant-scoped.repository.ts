@@ -1,111 +1,172 @@
-import type { ClientSession, FilterQuery, Model, SortOrder, Types, UpdateQuery } from "mongoose";
-import { isObjectIdString, toObjectId } from "../database/object-id";
+import {
+  and,
+  count,
+  eq,
+  sql,
+  type InferInsertModel,
+  type InferSelectModel,
+  type SQL,
+} from "drizzle-orm";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
+import type { Tx } from "../database/database.types";
+import { isUuid } from "../database/uuid";
+import { assertTenantId, type TenantDb, type TenantTx } from "./tenant-db";
 
-/** Every tenant-owned document carries the business it belongs to. */
-export interface TenantOwned {
-  _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
-}
+/** Every tenant-owned table has a uuid `id` and the business it belongs to. */
+export type TenantTable = PgTable & { id: AnyPgColumn; tenantId: AnyPgColumn };
+/** Insert shape without `tenantId`: the repository stamps it. */
+export type TenantInsert<T extends TenantTable> = Omit<InferInsertModel<T>, "tenantId">;
+/** Update shape: neither `id` nor `tenantId` can be set. */
+export type TenantUpdate<T extends TenantTable> = Partial<
+  Omit<InferInsertModel<T>, "tenantId" | "id">
+>;
 
 export interface FindOptions {
-  sort?: Record<string, SortOrder>;
+  orderBy?: SQL[];
   limit?: number;
-  skip?: number;
-  session?: ClientSession;
+  offset?: number;
 }
 
 /**
  * Base class for every repository of tenant-owned data (ARCH-01 §6 rule 4).
  *
- * Every method takes `tenantId` first and ANDs it into the query, overriding
- * any `tenantId` a caller put in the filter, so one business can never read or
- * change another's documents. There is deliberately no delete method (G4).
+ * Every method takes `tenantId` first. The query runs inside a TenantDb
+ * transaction (so PostgreSQL row-level security sees the same business) and its
+ * WHERE is always `tenant_id = <tenantId> AND (<caller's filter>)`: a caller's
+ * filter can narrow but never widen the result, and an update can never move a
+ * row to another business. There is deliberately no delete method (G4).
  */
-export abstract class TenantScopedRepository<T extends TenantOwned> {
-  protected constructor(protected readonly model: Model<T>) {}
+export abstract class TenantScopedRepository<T extends TenantTable> {
+  protected constructor(
+    protected readonly tenantDb: TenantDb,
+    protected readonly table: T,
+  ) {}
 
-  protected scope(tenantId: string, filter: FilterQuery<T> = {}): FilterQuery<T> {
-    if (!isObjectIdString(tenantId)) throw new Error("tenantId is required");
-    return { ...filter, tenantId: toObjectId(tenantId) } as FilterQuery<T>;
+  /** The table as Drizzle's query builders want it (generics stop at PgTable). */
+  private get pgTable(): PgTable {
+    return this.table;
   }
 
-  async findById(tenantId: string, id: string, session?: ClientSession): Promise<T | null> {
-    if (!isObjectIdString(id)) return null;
-    return this.findOne(tenantId, { _id: toObjectId(id) } as FilterQuery<T>, session);
+  /**
+   * Runs `work` in the caller's tenant transaction (`within`), or in a new one.
+   * A transaction opened for another business is refused.
+   */
+  protected async run<R>(
+    tenantId: string,
+    work: (tx: Tx) => Promise<R>,
+    within?: TenantTx,
+  ): Promise<R> {
+    assertTenantId(tenantId);
+    if (!within) return this.tenantDb.transaction(tenantId, (t) => work(t.tx));
+    if (within.tenantId !== tenantId) throw new Error("transaction belongs to another tenant");
+    return work(within.tx);
+  }
+
+  /** `tenant_id = $1 AND (filter)`. The parentheses keep a raw `x OR y` filter inside. */
+  protected scope(tenantId: string, where?: SQL): SQL {
+    const own = eq(this.table.tenantId, tenantId);
+    return where ? and(own, sql`(${where})`)! : own;
+  }
+
+  async findById(tenantId: string, id: string, within?: TenantTx) {
+    assertTenantId(tenantId);
+    if (!isUuid(id)) return null;
+    return this.findOne(tenantId, eq(this.table.id, id), within);
   }
 
   async findOne(
     tenantId: string,
-    filter: FilterQuery<T>,
-    session?: ClientSession,
-  ): Promise<T | null> {
-    return this.model
-      .findOne(this.scope(tenantId, filter))
-      .session(session ?? null)
-      .lean<T>()
-      .exec();
+    where?: SQL,
+    within?: TenantTx,
+  ): Promise<InferSelectModel<T> | null> {
+    const rows = await this.find(tenantId, where, { limit: 1 }, within);
+    return rows[0] ?? null;
   }
 
-  async find(tenantId: string, filter: FilterQuery<T> = {}, opts: FindOptions = {}): Promise<T[]> {
-    const query = this.model.find(this.scope(tenantId, filter)).session(opts.session ?? null);
-    if (opts.sort) query.sort(opts.sort);
-    if (opts.skip) query.skip(opts.skip);
-    if (opts.limit) query.limit(opts.limit);
-    return query.lean<T[]>().exec();
-  }
-
-  async count(tenantId: string, filter: FilterQuery<T> = {}): Promise<number> {
-    return this.model.countDocuments(this.scope(tenantId, filter)).exec();
-  }
-
-  async create(
+  find(
     tenantId: string,
-    doc: Omit<T, "_id" | "tenantId">,
-    session?: ClientSession,
-  ): Promise<T> {
-    const scoped = { ...doc, tenantId: this.scope(tenantId).tenantId };
-    const [created] = await this.model.create([scoped], { session: session ?? null });
-    return created!.toObject() as T;
+    where?: SQL,
+    opts: FindOptions = {},
+    within?: TenantTx,
+  ): Promise<InferSelectModel<T>[]> {
+    return this.run(
+      tenantId,
+      async (tx) => {
+        let query = tx.select().from(this.pgTable).where(this.scope(tenantId, where)).$dynamic();
+        if (opts.orderBy?.length) query = query.orderBy(...opts.orderBy);
+        if (opts.limit !== undefined) query = query.limit(opts.limit);
+        if (opts.offset !== undefined) query = query.offset(opts.offset);
+        return (await query) as InferSelectModel<T>[];
+      },
+      within,
+    );
   }
 
-  /** Returns the number of matched documents. Throws if the update would touch `tenantId`. */
-  async updateOne(
+  count(tenantId: string, where?: SQL, within?: TenantTx): Promise<number> {
+    return this.run(
+      tenantId,
+      async (tx) => {
+        const [row] = await tx
+          .select({ n: count() })
+          .from(this.pgTable)
+          .where(this.scope(tenantId, where));
+        return row?.n ?? 0;
+      },
+      within,
+    );
+  }
+
+  create(
     tenantId: string,
-    filter: FilterQuery<T>,
-    update: UpdateQuery<T>,
-    session?: ClientSession,
+    values: TenantInsert<T>,
+    within?: TenantTx,
+  ): Promise<InferSelectModel<T>> {
+    return this.run(
+      tenantId,
+      async (tx) => {
+        // Spread last: a tenantId smuggled into `values` is overwritten.
+        const row = { ...values, tenantId } as InferInsertModel<T>;
+        const [created] = await tx.insert(this.pgTable).values(row).returning();
+        return created as InferSelectModel<T>;
+      },
+      within,
+    );
+  }
+
+  /** Returns the number of rows changed. Throws if `set` would touch `id` or `tenantId`. */
+  async update(
+    tenantId: string,
+    where: SQL,
+    set: TenantUpdate<T>,
+    within?: TenantTx,
   ): Promise<number> {
-    assertTenantIdUntouched(update);
-    const res = await this.model
-      .updateOne(this.scope(tenantId, filter), update)
-      .session(session ?? null)
-      .exec();
-    return res.matchedCount;
+    assertTenantIdUntouched(this.table, set);
+    return this.run(
+      tenantId,
+      async (tx) => {
+        const changed = await tx
+          .update(this.pgTable)
+          .set(set as Record<string, unknown>)
+          .where(this.scope(tenantId, where))
+          .returning({ id: this.table.id });
+        return changed.length;
+      },
+      within,
+    );
   }
 }
 
-const touchesTenantId = (path: string) => path === "tenantId" || path.startsWith("tenantId.");
-
 /**
- * Refuses (rather than silently drops) any update that could change which
- * business a document belongs to: a `tenantId` / `tenantId.*` path under any
- * operator ($set, $unset, $inc, $min, $max, $currentDate, $push, $addToSet,
- * $setOnInsert, ...), a `$rename` to or from it, a bare replacement field, or
- * an aggregation-pipeline update (too expressive to check safely).
+ * Refuses (rather than silently drops) an update that names `tenantId` or `id`,
+ * or any property mapped to the `tenant_id` column, even when the types were
+ * bypassed with a cast.
  */
-export function assertTenantIdUntouched(update: unknown): void {
-  if (Array.isArray(update)) {
-    throw new Error("Pipeline updates are not allowed on tenant-scoped data");
-  }
-  for (const [key, value] of Object.entries((update ?? {}) as Record<string, unknown>)) {
-    if (!key.startsWith("$")) {
-      if (touchesTenantId(key)) throw new Error("tenantId cannot be changed");
-      continue;
+export function assertTenantIdUntouched(table: TenantTable, set: object): void {
+  for (const key of Object.keys(set)) {
+    const column = (table as unknown as Record<string, { name?: unknown } | undefined>)[key];
+    if (key === "tenantId" || column?.name === "tenant_id") {
+      throw new Error("tenantId cannot be changed");
     }
-    if (!value || typeof value !== "object") continue;
-    for (const [path, arg] of Object.entries(value as Record<string, unknown>)) {
-      const renamesInto = key === "$rename" && typeof arg === "string" && touchesTenantId(arg);
-      if (touchesTenantId(path) || renamesInto) throw new Error("tenantId cannot be changed");
-    }
+    if (key === "id") throw new Error("id cannot be changed");
   }
 }

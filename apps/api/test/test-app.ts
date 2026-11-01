@@ -1,32 +1,37 @@
 import "reflect-metadata";
 import { randomBytes } from "node:crypto";
-import { getConnectionToken } from "@nestjs/mongoose";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
-import type { Connection } from "mongoose";
-import { inject } from "vitest";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { AppModule } from "../src/app.module";
 import { configureApp, createFastifyAdapter } from "../src/bootstrap/configure-app";
 import { APP_CONFIG, loadAppConfig } from "../src/config/app-config";
+import { createTestDatabase, pgUrl } from "./pg";
 
 export interface TestApp {
   app: NestFastifyApplication;
-  db: Connection;
+  /**
+   * Direct database access for arranging and inspecting test data, connected
+   * as the table owner (the app itself runs as the restricted books_app role).
+   */
+  db: NodePgDatabase;
+  /** Raw SQL as the table owner; returns the rows. */
+  sql: <R = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<R[]>;
+  database: string;
   close: () => Promise<void>;
 }
 
-function uriWithDatabase(uri: string, dbName: string): string {
-  const url = new URL(uri);
-  url.pathname = `/${dbName}`;
-  return url.toString();
-}
-
-/** Boots the real AppModule against a fresh database. Secrets are random per run. */
+/**
+ * Boots the real AppModule against a fresh database: the app applies the
+ * migrations itself at startup, exactly as in production. Secrets are random per run.
+ */
 export async function createTestApp(env: Record<string, string> = {}): Promise<TestApp> {
-  const dbName = `books_test_${randomBytes(6).toString("hex")}`;
+  const database = await createTestDatabase();
   const config = loadAppConfig({
     NODE_ENV: "test",
-    MONGODB_URI: uriWithDatabase(inject("mongoUri"), dbName),
+    DATABASE_URL: pgUrl("app", database),
+    DATABASE_MIGRATION_URL: pgUrl("owner", database),
     JWT_ACCESS_SECRET: randomBytes(32).toString("hex"),
     JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
     COOKIE_SECURE: "false",
@@ -43,13 +48,16 @@ export async function createTestApp(env: Record<string, string> = {}): Promise<T
   await configureApp(app, config);
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
-  const db = app.get<Connection>(getConnectionToken());
+
+  const ownerPool = new Pool({ connectionString: pgUrl("owner", database), max: 3 });
   return {
     app,
-    db,
+    db: drizzle(ownerPool),
+    sql: async (text, params) => (await ownerPool.query(text, params)).rows,
+    database,
     close: async () => {
-      await db.dropDatabase();
       await app.close();
+      await ownerPool.end();
     },
   };
 }

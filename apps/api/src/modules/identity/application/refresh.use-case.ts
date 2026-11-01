@@ -1,12 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { SessionResponse } from "@books/shared";
+import { DB, type Database } from "../../../common/database/database.types";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import { AuditService } from "../../audit/application/audit.service";
 import { pickActiveMembership } from "../domain/active-tenant";
 import { REFRESH_REUSE_GRACE_MS, refreshExpiry } from "../domain/auth-policy";
 import { IdentityErrors } from "../domain/identity-errors";
 import { RefreshSessionsRepository } from "../infrastructure/refresh-sessions.repository";
-import type { RefreshSessionDoc } from "../infrastructure/schemas/refresh-session.schema";
+import type { RefreshSessionRow } from "../infrastructure/tables/refresh-sessions.table";
 import { TokenService } from "../infrastructure/token-service";
 import { UsersRepository } from "../infrastructure/users.repository";
 import { SessionIssuer, type IssuedTokens } from "./session-issuer";
@@ -25,6 +26,7 @@ import { SessionView } from "./session-view";
 @Injectable()
 export class RefreshUseCase {
   constructor(
+    @Inject(DB) private readonly db: Database,
     private readonly sessions: RefreshSessionsRepository,
     private readonly tokens: TokenService,
     private readonly users: UsersRepository,
@@ -43,7 +45,7 @@ export class RefreshUseCase {
     if (!stored) throw IdentityErrors.sessionExpired();
 
     const now = new Date();
-    const userId = stored.userId.toHexString();
+    const userId = stored.userId;
     if (stored.status === "used") {
       if (await this.isRacingTab(stored, now)) throw IdentityErrors.refreshInProgress();
       await this.sessions.revokeFamily(stored.familyId);
@@ -59,14 +61,11 @@ export class RefreshUseCase {
     if (stored.status !== "active" || stored.expiresAt.getTime() <= now.getTime()) {
       throw IdentityErrors.sessionExpired();
     }
-    // Older documents have no family start; their first token's createdAt is close enough.
-    const family = { id: stored.familyId, startedAt: stored.familyStartedAt ?? stored.createdAt };
+    const family = { id: stored.familyId, startedAt: stored.familyStartedAt };
     if (refreshExpiry(family.startedAt, now).getTime() <= now.getTime()) {
       await this.sessions.revokeFamily(stored.familyId);
       throw IdentityErrors.sessionExpired();
     }
-    // Another request rotated this very token a moment ago (parallel tabs).
-    if (!(await this.sessions.markUsed(tokenHash))) throw IdentityErrors.refreshInProgress();
 
     const user = await this.users.findById(userId);
     if (!user || user.status !== "active") {
@@ -74,21 +73,25 @@ export class RefreshUseCase {
       throw IdentityErrors.sessionExpired();
     }
     const memberships = await this.view.membershipsOf(userId);
-    const active = pickActiveMembership(memberships, stored.activeTenantId?.toHexString() ?? null);
-    const tokens = await this.issuer.rotate(family, userId, active, meta);
+    const active = pickActiveMembership(memberships, stored.activeTenantId);
+    // Burning the old token and storing its successor commit together. Parallel
+    // requests with the same token queue on its row; only the first matches.
+    const tokens = await this.db.transaction(async (tx) => {
+      if (!(await this.sessions.markUsed(tokenHash, tx))) throw IdentityErrors.refreshInProgress();
+      return this.issuer.rotate(family, userId, active, meta, tx);
+    });
     return {
       response: this.view.build(user, memberships, active?.tenantId ?? null),
       tokens,
     };
   }
 
-  private async isRacingTab(stored: RefreshSessionDoc, now: Date): Promise<boolean> {
+  private async isRacingTab(stored: RefreshSessionRow, now: Date): Promise<boolean> {
     if (!stored.usedAt || now.getTime() - stored.usedAt.getTime() >= REFRESH_REUSE_GRACE_MS) {
       return false;
     }
     if (await this.sessions.isFamilyActive(stored.familyId, now)) return true;
-    // The winning request may still be issuing the successor (a few ms after
-    // marking this token used). The family not being revoked tells us so.
+    // Defensive: a successor that is not visible yet still means "not revoked".
     return !(await this.sessions.isFamilyRevoked(stored.familyId));
   }
 }

@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --filter @books/shared build && concurrently -k -n db,api,web -c blue,green,magenta \"pnpm --filter @books/api dev:db\" \"wait-on -t 120000 tcp:127.0.0.1:27018 && pnpm dev:api\" \"pnpm dev:web\"",
+    "dev": "pnpm --filter @books/shared build && concurrently -k -n db,api,web -c blue,green,magenta \"pnpm --filter @books/api dev:db\" \"wait-on -t 120000 tcp:127.0.0.1:5433 && pnpm dev:api\" \"pnpm dev:web\"",
     "dev:api": "pnpm --filter @books/api dev",
     "dev:web": "pnpm --filter @books/web dev",
     "build": "pnpm -r build",

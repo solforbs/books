@@ -1,9 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { InjectConnection } from "@nestjs/mongoose";
-import type { Connection } from "mongoose";
+import { Inject, Injectable } from "@nestjs/common";
 import { isStrongPassword, type recoverRequestSchema } from "@books/shared";
 import type { z } from "zod";
-import { runInTransaction } from "../../../common/database/transaction";
+import { DB, type Database } from "../../../common/database/database.types";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import { AuditService } from "../../audit/application/audit.service";
 import { normalizeRecoveryCode } from "../domain/recovery-codes";
@@ -25,7 +23,7 @@ export type RecoverInput = z.output<typeof recoverRequestSchema>;
 @Injectable()
 export class RecoverUseCase {
   constructor(
-    @InjectConnection() private readonly connection: Connection,
+    @Inject(DB) private readonly db: Database,
     private readonly users: UsersRepository,
     private readonly codes: RecoveryCodesRepository,
     private readonly sessions: RefreshSessionsRepository,
@@ -52,17 +50,17 @@ export class RecoverUseCase {
     };
     if (!user || user.status !== "active") throw await fail("unknown_user", null);
 
-    const userId = user._id.toHexString();
+    const userId = user.id;
     const codeHash = this.tokens.hashRecoveryCode(normalizeRecoveryCode(input.recoveryCode));
     // Name/email words are only judged once the code proved who is asking, so a
     // weak_password answer never tells a stranger that this identifier exists.
     const weak = !isStrongPassword(input.newPassword, personalWords(user));
-    const outcome = await runInTransaction(this.connection, async (session) => {
-      if (!(await this.codes.consume(userId, codeHash, session))) return "invalid_code" as const;
+    const outcome = await this.db.transaction(async (tx) => {
+      if (!(await this.codes.consume(userId, codeHash, tx))) return "invalid_code" as const;
       // Throwing aborts the transaction, so the code stays unused for a retry.
       if (weak) throw IdentityErrors.weakPassword();
-      await this.users.setPassword(userId, newHash, session);
-      await this.sessions.revokeAllForUser(userId, undefined, session);
+      await this.users.setPassword(userId, newHash, tx);
+      await this.sessions.revokeAllForUser(userId, undefined, tx);
       return "ok" as const;
     });
     if (outcome !== "ok") throw await fail(outcome, userId);

@@ -1,7 +1,5 @@
-import { Module, OnModuleInit } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
-import { InjectConnection, MongooseModule } from "@nestjs/mongoose";
-import type { Connection } from "mongoose";
 import { AuditModule } from "../audit/audit.module";
 import { AuthController } from "./api/auth.controller";
 import { AuthCookies } from "./api/auth-cookies";
@@ -23,33 +21,15 @@ import { TenantAccess } from "./application/tenant-access";
 import { MembershipsRepository } from "./infrastructure/memberships.repository";
 import { PasswordHasher } from "./infrastructure/password-hasher";
 import { RecoveryCodesRepository } from "./infrastructure/recovery-codes.repository";
+import { RefreshSessionPurger } from "./infrastructure/refresh-session-purger";
 import { RefreshSessionsRepository } from "./infrastructure/refresh-sessions.repository";
-import { MEMBERSHIP_MODEL, membershipSchema } from "./infrastructure/schemas/membership.schema";
-import {
-  RECOVERY_CODE_MODEL,
-  recoveryCodeSchema,
-} from "./infrastructure/schemas/recovery-code.schema";
-import {
-  REFRESH_SESSION_MODEL,
-  refreshSessionSchema,
-} from "./infrastructure/schemas/refresh-session.schema";
-import { TENANT_MODEL, tenantSchema } from "./infrastructure/schemas/tenant.schema";
-import { USER_MODEL, userSchema } from "./infrastructure/schemas/user.schema";
 import { TenantsRepository } from "./infrastructure/tenants.repository";
 import { TokenService } from "./infrastructure/token-service";
 import { UsersRepository } from "./infrastructure/users.repository";
 
-const MODELS = [
-  { name: USER_MODEL, schema: userSchema },
-  { name: TENANT_MODEL, schema: tenantSchema },
-  { name: MEMBERSHIP_MODEL, schema: membershipSchema },
-  { name: REFRESH_SESSION_MODEL, schema: refreshSessionSchema },
-  { name: RECOVERY_CODE_MODEL, schema: recoveryCodeSchema },
-];
-
 /** Businesses (tenants), users, memberships, sessions, login (ARCH-01 §5, §8). */
 @Module({
-  imports: [MongooseModule.forFeature(MODELS), JwtModule.register({}), AuditModule],
+  imports: [JwtModule.register({}), AuditModule],
   controllers: [AuthController],
   providers: [
     UsersRepository,
@@ -57,6 +37,7 @@ const MODELS = [
     MembershipsRepository,
     RefreshSessionsRepository,
     RecoveryCodesRepository,
+    RefreshSessionPurger,
     PasswordHasher,
     TokenService,
     SessionIssuer,
@@ -78,14 +59,4 @@ const MODELS = [
   ],
   exports: [AuthGuard, RequireTenantGuard, TenantAccess, IdentityService],
 })
-export class IdentityModule implements OnModuleInit {
-  constructor(@InjectConnection() private readonly connection: Connection) {}
-
-  /**
-   * Create collections and unique indexes up front: a transaction cannot build
-   * an index, and duplicate phones must be impossible from the first sign-up.
-   */
-  async onModuleInit(): Promise<void> {
-    await Promise.all(MODELS.map((m) => this.connection.model(m.name).init()));
-  }
-}
+export class IdentityModule {}

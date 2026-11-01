@@ -1,9 +1,11 @@
+import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { NEW_PASSWORD, PASSWORD, e164, registerOwner } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
 import { MAX_FAILED_LOGINS } from "../domain/auth-policy";
 import { PasswordHasher } from "../infrastructure/password-hasher";
+import { users } from "../infrastructure/tables/users.table";
 
 const WRONG = "Wrong-Password-99";
 
@@ -17,7 +19,13 @@ describe("atomic lockout (M2) shared with change-password (L3)", () => {
 
   const login = (identifier: string, password: string) =>
     new TestClient(t.app).post("/auth/login", { identifier, password });
-  const userDoc = (phone: string) => t.db.collection("users").findOne({ phone: e164(phone) });
+  const userDoc = async (phone: string) =>
+    (
+      await t.db
+        .select()
+        .from(users)
+        .where(eq(users.phone, e164(phone)))
+    )[0];
 
   it("10 parallel wrong passwords: at most 5 are verified, the rest get account_locked", async () => {
     const { request } = await registerOwner(new TestClient(t.app));
@@ -30,7 +38,7 @@ describe("atomic lockout (M2) shared with change-password (L3)", () => {
     expect(verify).toHaveBeenCalledTimes(MAX_FAILED_LOGINS);
     expect(codes.filter((c) => c === "invalid_credentials")).toHaveLength(MAX_FAILED_LOGINS);
     expect(codes.filter((c) => c === "account_locked")).toHaveLength(10 - MAX_FAILED_LOGINS);
-    expect((await userDoc(phone))?.lockedUntil.getTime()).toBeGreaterThan(Date.now());
+    expect((await userDoc(phone))?.lockedUntil?.getTime()).toBeGreaterThan(Date.now());
 
     // Even the right password is refused while locked, without running argon2.
     verify.mockClear();

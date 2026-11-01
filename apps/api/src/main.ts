@@ -5,6 +5,7 @@ import { NestFactory } from "@nestjs/core";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module";
 import { configureApp, createFastifyAdapter } from "./bootstrap/configure-app";
+import { safeErrorMessage } from "./common/errors/safe-error-message";
 import { loadAppConfig } from "./config/app-config";
 
 async function bootstrap(): Promise<void> {
@@ -22,6 +23,6 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((err: unknown) => {
-  console.error(err instanceof Error ? err.message : err);
+  console.error(safeErrorMessage(err));
   process.exit(1);
 });

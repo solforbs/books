@@ -1,0 +1,26 @@
+-- Roles for the Books API (run by 10-books-roles.sh as the postgres superuser).
+--
+--   books_owner  owns the database and every table. The API connects as it only at
+--                startup, to apply migrations (DATABASE_MIGRATION_URL).
+--   books_app    every request (DATABASE_URL). Owns nothing, so it cannot change the
+--                schema or switch row-level security off; table privileges come from
+--                the migrations (SELECT/INSERT/UPDATE, never DELETE).
+--
+-- Neither is a superuser or has BYPASSRLS, so row-level security applies to both
+-- (tenant tables use FORCE ROW LEVEL SECURITY). The API refuses to start in
+-- production if DATABASE_URL points at a superuser, a BYPASSRLS role or a table owner.
+
+CREATE ROLE books_owner WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+  PASSWORD :'owner_password';
+CREATE ROLE books_app WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+  PASSWORD :'app_password';
+
+ALTER DATABASE :"db_name" OWNER TO books_owner;
+-- Only the two Books roles (and the admin) may connect; no temporary tables.
+REVOKE CONNECT, TEMPORARY ON DATABASE :"db_name" FROM PUBLIC;
+GRANT CONNECT ON DATABASE :"db_name" TO books_owner, books_app;
+
+-- Tables are created by books_owner in the public schema; books_app may only use them.
+ALTER SCHEMA public OWNER TO books_owner;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO books_app;
