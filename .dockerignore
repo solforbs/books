@@ -1,0 +1,12 @@
+# Keep local-only files out of every Docker build context.
+**/node_modules
+**/dist
+**/dev-dist
+**/coverage
+**/.data
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.claude
+research
