@@ -57,6 +57,16 @@ describe("register contract", () => {
     });
     expect(r.success).toBe(false);
   });
+  it("rejects a bad email with the stable message and normalises a good one", () => {
+    const base = { businessName: "Shop A", ownerName: "Ali", password: "Duka-Mpya-77x" };
+    const bad = registerRequestSchema.safeParse({ ...base, email: "not-an-email" });
+    expect(bad.success).toBe(false);
+    expect(bad.error?.issues[0]?.message).toBe("invalid_email");
+    expect(registerRequestSchema.parse({ ...base, email: " Ali@Example.COM " }).email).toBe(
+      "ali@example.com",
+    );
+  });
+
   it("normalises the phone number", () => {
     const r = registerRequestSchema.parse({
       businessName: "Luthuli Phones",

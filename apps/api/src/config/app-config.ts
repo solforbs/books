@@ -17,7 +17,7 @@ const trustProxy = z
   .transform((raw, ctx): TrustProxy => {
     const parsed = parseTrustProxy(raw);
     if ("error" in parsed) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: parsed.error });
+      ctx.addIssue({ code: "custom", message: parsed.error });
       return false;
     }
     return parsed.value;
@@ -34,7 +34,7 @@ export const appConfigSchema = z
     JWT_ACCESS_SECRET: secret,
     JWT_REFRESH_SECRET: secret,
     COOKIE_SECURE: booleanString,
-    WEB_ORIGIN: z.string().url(),
+    WEB_ORIGIN: z.url(),
     TRUST_PROXY: trustProxy,
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(120),
     AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(10),

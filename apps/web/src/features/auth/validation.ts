@@ -2,7 +2,7 @@ import { checkPassword } from "@books/shared";
 
 /** Minimal view of a Zod issue, so this file does not depend on Zod's types. */
 interface Issue {
-  path: (string | number)[];
+  path: readonly PropertyKey[];
   message: string;
   code: string;
   minimum?: unknown;

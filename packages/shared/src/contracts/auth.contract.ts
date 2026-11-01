@@ -20,11 +20,15 @@ const phoneSchema = z
   .trim()
   .transform((v, ctx) => {
     const phone = normalizeKenyanPhone(v);
-    if (!phone) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "invalid_phone" });
+    if (!phone) ctx.addIssue({ code: "custom", message: "invalid_phone" });
     return phone ?? v;
   });
 
-const emailSchema = z.string().trim().toLowerCase().email("invalid_email").max(254);
+const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.email({ error: "invalid_email" }).max(254));
 const strongPassword = z
   .string()
   .max(PASSWORD_MAX_LENGTH)
