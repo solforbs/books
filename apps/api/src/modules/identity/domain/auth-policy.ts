@@ -31,3 +31,18 @@ export function refreshExpiry(familyStartedAt: Date, now: Date): Date {
   const cap = familyStartedAt.getTime() + MAX_SESSION_LIFETIME_SECONDS * 1000;
   return new Date(Math.min(now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000, cap));
 }
+
+/** A temporary password (add staff, reset) works for 72 hours (S1a security review). */
+export const TEMPORARY_PASSWORD_TTL_MS = 72 * 60 * 60_000;
+
+/**
+ * Whether the person's current password is a temporary one past its 72 hours.
+ * A password the person chose themselves (mustChangePassword false) never expires.
+ */
+export function isTemporaryPasswordExpired(
+  user: { mustChangePassword: boolean; temporaryPasswordIssuedAt: Date | null },
+  now: Date,
+): boolean {
+  if (!user.mustChangePassword || !user.temporaryPasswordIssuedAt) return false;
+  return now.getTime() - user.temporaryPasswordIssuedAt.getTime() >= TEMPORARY_PASSWORD_TTL_MS;
+}

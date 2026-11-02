@@ -5,6 +5,7 @@ import {
   addStaff,
   createLocation,
   expectStatus,
+  firstLogin,
   loginAs,
   ownerWithShop,
 } from "../../../../test/business-fixtures";
@@ -33,6 +34,7 @@ describe("POST /staff (F02 §2.3, login change)", () => {
       }),
       201,
     );
+    expect(res.headers["cache-control"]).toBe("no-store");
     const body = createStaffResponseSchema.parse(res.json());
     expect(body.member).toMatchObject({
       name: "Brian Otieno",
@@ -42,14 +44,16 @@ describe("POST /staff (F02 §2.3, login change)", () => {
       status: "active",
       mustChangePassword: true,
       permissions: {},
+      lastLoginAt: null,
     });
-    const temp = body.temporaryPassword!;
+    const temp = body.temporaryPassword;
     expect(checkPassword(temp, ["Brian Otieno"])).toEqual([]);
-    const stored = await t.sql<{ password_hash: string }>(
-      "select password_hash from users where phone = $1",
+    const stored = await t.sql<{ password_hash: string; issued: Date | null }>(
+      "select password_hash, temporary_password_issued_at as issued from users where phone = $1",
       [e164(phone)],
     );
     expect(stored[0]!.password_hash).toMatch(/^\$argon2id\$/);
+    expect(Date.now() - stored[0]!.issued!.getTime()).toBeLessThan(60_000);
 
     const cashier = new TestClient(t.app);
     const login = expectStatus(
@@ -71,6 +75,11 @@ describe("POST /staff (F02 §2.3, login change)", () => {
       (await new TestClient(t.app).post("/auth/login", { identifier: phone, password: temp }))
         .statusCode,
     ).toBe(401);
+    const cleared = await t.sql(
+      "select temporary_password_issued_at as issued from users where phone = $1",
+      [e164(phone)],
+    );
+    expect(cleared[0]).toEqual({ issued: null });
 
     // Audit: who added whom, phone masked, no password.
     const [entry] = await t.db
@@ -86,76 +95,57 @@ describe("POST /staff (F02 §2.3, login change)", () => {
     expect(dump).toContain(`+254******${phone.slice(-3)}`);
   });
 
-  it("someone who already has an account (another business) keeps their password and picks the business", async () => {
-    const shopA = await ownerWithShop(t);
-    const shopB = await ownerWithShop(t);
-    const phone = shopB.register.user.phone!; // the owner of B
-    const { member, temporaryPassword } = await addStaff(shopA.owner, {
-      name: "Ignored Name",
-      phone,
-      role: "manager",
-      locationIds: [shopA.shop.id],
-    });
-    expect(temporaryPassword).toBeNull();
-    expect(member).toMatchObject({
-      userId: shopB.ownerUserId,
-      role: "manager",
-      mustChangePassword: false,
-    });
-
-    const client = new TestClient(t.app);
-    const login = expectStatus(
-      await client.post("/auth/login", { identifier: phone, password: PASSWORD }),
-      200,
-    );
-    const session = login.json<SessionResponse>();
-    expect(session.activeTenantId).toBeNull(); // two businesses: they choose
-    expect(session.memberships.map((m) => m.tenantId).sort()).toEqual(
-      [shopA.tenantId, shopB.tenantId].sort(),
-    );
-    expectStatus(await client.post("/auth/select-business", { tenantId: shopA.tenantId }), 200);
-    expect((await client.get("/me/permissions")).json().role).toBe("manager");
-  });
-
-  it("refuses the same person twice (already_member), even by email or switched off", async () => {
+  it("refuses any phone or email that already has an account (account_exists), revealing nothing", async () => {
     const { owner, shop, register } = await ownerWithShop(t);
-    const phone = randomPhone();
+    const other = await ownerWithShop(t);
     const email = randomEmail();
     const base = { name: "Brian Otieno", role: "cashier" as const, locationIds: [shop.id] };
-    const { member } = await addStaff(owner, { ...base, phone, email });
-    for (const who of [{ phone }, { email: email.toUpperCase() }]) {
+    const { member } = await addStaff(owner, { ...base, phone: randomPhone(), email });
+    const before = await t.sql("select count(*)::int as n from memberships");
+    for (const who of [
+      { phone: other.register.user.phone! }, // the owner of another business
+      { phone: randomPhone(), email: email.toUpperCase() }, // staff of this one, by email
+      { phone: member.phone! }, // the same person twice
+      { phone: register.user.phone! }, // the owner adding themselves
+      { phone: other.register.user.phone!, email: randomEmail() }, // only one of two matches
+    ]) {
       const res = await owner.post("/staff", { ...base, ...who });
-      expect(res.statusCode).toBe(409);
-      expect(res.json().error.code).toBe("already_member");
+      expect(res.statusCode, JSON.stringify(who)).toBe(409);
+      expect(res.json()).toEqual({
+        error: { code: "account_exists", message: expect.any(String) },
+      });
+      for (const secret of [other.ownerUserId, "Amina", member.userId, member.membershipId]) {
+        expect(res.body).not.toContain(secret);
+      }
     }
+    // Nothing was attached anywhere, and the other owner's password still works.
+    expect(await t.sql("select count(*)::int as n from memberships")).toEqual(before);
+    await loginAs(t, other.register.user.phone!, PASSWORD);
+    // A switched-off person still has an account.
     expectStatus(await owner.post(`/staff/${member.membershipId}/switch-off`), 200);
-    expect((await owner.post("/staff", { ...base, phone })).json().error.code).toBe(
-      "already_member",
+    expect((await owner.post("/staff", { ...base, email })).json().error.code).toBe(
+      "account_exists",
     );
-    // The owner adding themselves.
-    const self = await owner.post("/staff", { ...base, phone: register.user.phone });
-    expect(self.json().error.code).toBe("already_member");
   });
 
-  it("refuses a phone of one person with the email of another (identifier_taken)", async () => {
-    const { owner, shop } = await ownerWithShop(t);
-    const other = await ownerWithShop(t);
-    const emailOwner = randomEmail();
-    await addStaff(other.owner, {
-      name: "Ann Achieng",
-      email: emailOwner,
-      role: "cashier",
-      locationIds: [other.shop.id],
-    });
-    const res = await owner.post("/staff", {
-      name: "Mixed Up",
-      phone: other.register.user.phone!,
-      email: emailOwner,
-      role: "cashier",
-      locationIds: [shop.id],
-    });
-    expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe("identifier_taken");
+  it("POST /staff has the strict rate limit", async () => {
+    const strict = await createTestApp({ AUTH_RATE_LIMIT_PER_MINUTE: "3" });
+    try {
+      const { owner, shop } = await ownerWithShop(strict);
+      const add = () =>
+        owner.post("/staff", {
+          name: "Brian Otieno",
+          phone: randomPhone(),
+          role: "cashier",
+          locationIds: [shop.id],
+        });
+      for (let i = 0; i < 3; i++) expectStatus(await add(), 201);
+      const limited = await add();
+      expect(limited.statusCode).toBe(429);
+      expect(limited.json().error.code).toBe("too_many_requests");
+    } finally {
+      await strict.close();
+    }
   });
 
   it("validates locations: required for non-owners, must be open locations of this business", async () => {
@@ -193,7 +183,7 @@ describe("POST /staff (F02 §2.3, login change)", () => {
       locationIds: [shop.id],
       permissions: { add_staff: true },
     });
-    const manager = await loginAs(t, phone, temporaryPassword!);
+    const manager = await firstLogin(t, phone, temporaryPassword);
     const cashier = {
       name: "Brian Otieno",
       phone: randomPhone(),
@@ -222,7 +212,7 @@ describe("POST /staff (F02 §2.3, login change)", () => {
       role: "manager",
       locationIds: [shop.id],
     });
-    const plainManager = await loginAs(t, plainPhone, plain.temporaryPassword!);
+    const plainManager = await firstLogin(t, plainPhone, plain.temporaryPassword);
     expect(
       (await plainManager.post("/staff", { ...cashier, phone: randomPhone() })).statusCode,
     ).toBe(403);

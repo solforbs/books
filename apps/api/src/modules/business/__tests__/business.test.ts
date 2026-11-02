@@ -1,7 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { businessResponseSchema } from "@books/shared";
-import { addStaff, expectStatus, loginAs, ownerWithShop } from "../../../../test/business-fixtures";
+import {
+  addStaff,
+  expectStatus,
+  firstLogin,
+  ownerWithShop,
+} from "../../../../test/business-fixtures";
 import { randomPhone } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { auditLog } from "../../audit/infrastructure/audit-log.table";
@@ -87,7 +92,7 @@ describe("business details (F02 'Business details for documents', G3)", () => {
       role: "manager",
       locationIds: [shop.id],
     });
-    const manager = await loginAs(t, phone, temporaryPassword!);
+    const manager = await firstLogin(t, phone, temporaryPassword!);
     expectStatus(await manager.get("/business"), 200);
     const res = await manager.put("/business", { name: "Mine", vatEnabled: false });
     expect(res.statusCode).toBe(403);

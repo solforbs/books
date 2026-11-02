@@ -1,17 +1,19 @@
 import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { MoneyPlace } from "@books/shared";
 import {
   addStaff,
   createLocation,
   expectStatus,
-  loginAs,
+  firstLogin,
   ownerWithShop,
   type OwnerShop,
 } from "../../../../test/business-fixtures";
 import { randomPhone } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import type { TestClient } from "../../../../test/test-client";
+import { auditLog } from "../../audit/infrastructure/audit-log.table";
 import { MoneyPlaceBalanceProbe } from "../application/contents-probes";
 
 describe("money places (F02 §3, T3)", () => {
@@ -51,7 +53,7 @@ describe("money places (F02 §3, T3)", () => {
       role: "cashier",
       locationIds: [shop2.id],
     });
-    const cashier = await loginAs(t, phone, temporaryPassword!);
+    const cashier = await firstLogin(t, phone, temporaryPassword!);
     return { ...biz, shop2, till, bank, cashier };
   }
 
@@ -96,6 +98,58 @@ describe("money places (F02 §3, T3)", () => {
     expect(safe.json().error.code).toBe("invalid_settles_to");
     const self = await s.owner.patch(`/money-places/${ok.id}`, { settlesToId: ok.id });
     expect(self.json().error.code).toBe("invalid_settles_to");
+  });
+
+  it("a manager only settles to a bank linked to one of their locations", async () => {
+    const s = await setup();
+    const shop2Bank = await create(s.owner, {
+      type: "bank",
+      name: "Co-op",
+      locationIds: [s.shop2.id],
+    });
+    const phone = randomPhone();
+    const m = await addStaff(s.owner, {
+      name: "Mary Wanjiku",
+      phone,
+      role: "manager",
+      locationIds: [s.shop2.id],
+    });
+    const manager = await firstLogin(t, phone, m.temporaryPassword);
+    const paybill = { type: "mpesa_paybill", name: "Paybill", locationIds: [s.shop2.id] };
+    const hidden = await manager.post("/money-places", { ...paybill, settlesToId: s.bank.id });
+    expect(hidden.statusCode).toBe(400);
+    expect(hidden.json().error.code).toBe("invalid_settles_to");
+    const ok = await create(manager, { ...paybill, settlesToId: shop2Bank.id });
+    const moved = await manager.patch(`/money-places/${ok.id}`, { settlesToId: s.bank.id });
+    expect(moved.json().error.code).toBe("invalid_settles_to");
+    // The owner sees every location, so any bank of the business.
+    expectStatus(await s.owner.patch(`/money-places/${ok.id}`, { settlesToId: s.bank.id }), 200);
+  });
+
+  it("audits the full business number and settlesToId on create and update", async () => {
+    const s = await setup();
+    const paybill = await create(s.owner, {
+      type: "mpesa_paybill",
+      name: "Paybill",
+      number: "400200",
+      settlesToId: s.bank.id,
+      locationIds: [s.shop.id],
+    });
+    expectStatus(await s.owner.patch(`/money-places/${paybill.id}`, { number: "400300" }), 200);
+    const details = async (action: string) =>
+      (
+        await t.db
+          .select()
+          .from(auditLog)
+          .where(and(eq(auditLog.action, action), eq(auditLog.targetId, paybill.id)))
+      )[0]!.details;
+    expect(await details("money_place_created")).toMatchObject({
+      after: { number: "400200", settlesToId: s.bank.id },
+    });
+    expect(await details("money_place_updated")).toMatchObject({
+      before: { number: "400200", settlesToId: s.bank.id },
+      after: { number: "400300", settlesToId: s.bank.id },
+    });
   });
 
   it("needs at least one usable location; M-Pesa numbers are digits", async () => {
@@ -181,7 +235,7 @@ describe("money places (F02 §3, T3)", () => {
       role: "manager",
       locationIds: [s.shop2.id, shop3.id],
     });
-    const manager = await loginAs(t, phone, temporaryPassword!);
+    const manager = await firstLogin(t, phone, temporaryPassword!);
     const res = await manager.patch(`/money-places/${s.till.id}`, { locationIds: [shop3.id] });
     expect(res.json().moneyPlace.locationIds).toEqual([shop3.id]);
     const ownerView = (await list(s.owner)).find((p) => p.id === s.till.id)!;

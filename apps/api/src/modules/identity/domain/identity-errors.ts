@@ -23,6 +23,14 @@ export const IdentityErrors = {
   notAMember: () => err(403, "not_a_member", "You are not a member of this business"),
   invalidRecoveryCode: () =>
     err(400, "invalid_recovery_code", "Recovery code is wrong or already used"),
+  temporaryPasswordExpired: () =>
+    err(
+      401,
+      "temporary_password_expired",
+      "This temporary password has expired; ask the owner for a new one",
+    ),
+  passwordChangeRequired: () =>
+    err(403, "password_change_required", "Change your temporary password first"),
   weakPassword: () =>
     err(400, "validation_failed", "Request validation failed", [
       { path: "newPassword", message: "weak_password" },

@@ -11,8 +11,9 @@ import { StaffMembers, auditView } from "./staff-members";
 
 /**
  * `POST /staff/:membershipId/switch-off` (owner only; F02 §2.5, T7). The person
- * is signed out at once (every session revoked, cached membership dropped), so
- * their very next request or refresh fails. Their history stays (G4).
+ * is signed out of THIS business at once (its sessions revoked, cached membership
+ * dropped), so their very next request or refresh here fails. Sessions in their
+ * other businesses stay (S1a review #2). Their history stays (G4).
  * Switching off someone already switched off changes nothing.
  */
 @Injectable()
@@ -41,7 +42,11 @@ export class SwitchOffStaffUseCase {
     });
     if (before.status === member.status) return { member };
 
-    await this.identity.revokeAllSessions(member.userId, "staff_switched_off", access.tenantId);
+    await this.identity.revokeSessionsInBusiness(
+      member.userId,
+      access.tenantId,
+      "staff_switched_off",
+    );
     this.members.forget(member.userId);
     await this.audit.record({
       ...auditBase(actor),

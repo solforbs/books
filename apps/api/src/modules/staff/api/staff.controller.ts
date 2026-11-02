@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Param, Patch, Post } from "@nestjs/common";
 import {
   createStaffRequestSchema,
   updateStaffRequestSchema,
@@ -21,6 +21,9 @@ import { ResetStaffPasswordUseCase } from "../application/reset-staff-password.u
 import { SwitchOffStaffUseCase } from "../application/switch-off-staff.use-case";
 import { SwitchOnStaffUseCase } from "../application/switch-on-staff.use-case";
 import { UpdateStaffUseCase, type UpdateStaffInput } from "../application/update-staff.use-case";
+
+/** Responses that carry a temporary password must never be cached anywhere. */
+const NO_STORE = "no-store";
 
 /**
  * HTTP wiring only. Who may call what is decided in the use cases (owner, or
@@ -45,8 +48,11 @@ export class StaffController {
     return this.listUseCase.execute(access);
   }
 
+  // Strict limit: each attempt tells whether a phone/email has an account (account_exists).
+  @StrictRateLimit()
   @Post()
   @HttpCode(201)
+  @Header("Cache-Control", NO_STORE)
   add(
     @Body(new ZodValidationPipe(createStaffRequestSchema)) body: AddStaffInput,
     @CurrentActor() actor: Actor,
@@ -84,6 +90,7 @@ export class StaffController {
   @StrictRateLimit()
   @Post(":membershipId/reset-password")
   @HttpCode(200)
+  @Header("Cache-Control", NO_STORE)
   resetPassword(
     @Param("membershipId") membershipId: string,
     @CurrentActor() actor: Actor,

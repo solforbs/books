@@ -26,6 +26,7 @@ import { RefreshUseCase } from "../application/refresh.use-case";
 import { RegisterUseCase, type RegisterInput } from "../application/register.use-case";
 import { SelectBusinessUseCase } from "../application/select-business.use-case";
 import type { AuthContext } from "../domain/auth-context";
+import { AllowPendingPasswordChange } from "./allow-pending-password-change";
 import { AuthCookies } from "./auth-cookies";
 import { CurrentUser } from "./current-user.decorator";
 
@@ -77,9 +78,14 @@ export class AuthController {
   async selectBusiness(
     @Body(new ZodValidationPipe(selectBusinessRequestSchema)) body: { tenantId: string },
     @CurrentUser() auth: AuthContext,
+    @ReqMeta() meta: RequestMeta,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<SessionResponse> {
-    const { response, accessToken } = await this.selectBusinessUseCase.execute(auth, body.tenantId);
+    const { response, accessToken } = await this.selectBusinessUseCase.execute(
+      auth,
+      body.tenantId,
+      meta,
+    );
     this.cookies.setAccess(reply, accessToken);
     return response;
   }
@@ -119,11 +125,13 @@ export class AuthController {
     this.cookies.clear(reply);
   }
 
+  @AllowPendingPasswordChange()
   @Get("me")
   me(@CurrentUser() auth: AuthContext): Promise<SessionResponse> {
     return this.getSessionUseCase.execute(auth);
   }
 
+  @AllowPendingPasswordChange()
   @StrictRateLimit()
   @Post("change-password")
   @HttpCode(204)

@@ -71,8 +71,9 @@ export class AuditService {
 
   /**
    * A person's login attempts, newest first (F02 §6 login history). Only entries
-   * that concern this business or no business (failed attempts carry none), so
-   * an owner never sees the person's logins into other businesses.
+   * tied to this business (S1a review #5): logins and business selections into
+   * it, and failed attempts of people who belong to this business only. An owner
+   * never sees the person's activity in other businesses.
    */
   loginHistory(userId: string, tenantId: string, limit = 100): Promise<LoginHistoryEntry[]> {
     return this.repo.loginHistory(userId, tenantId, limit);

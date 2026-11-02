@@ -5,7 +5,7 @@ import {
   addStaff,
   createLocation,
   expectStatus,
-  loginAs,
+  firstLogin,
   ownerWithShop,
 } from "../../../../test/business-fixtures";
 import { randomPhone } from "../../../../test/fixtures";
@@ -149,7 +149,7 @@ describe("locations (F02 §3)", () => {
       locationIds: [shop.id],
       permissions: { manage_locations: false },
     });
-    const manager = await loginAs(t, phone, temporaryPassword!);
+    const manager = await firstLogin(t, phone, temporaryPassword!);
     const denied = await manager.post("/locations", { name: "Shop 9", type: "shop" });
     expect(denied.statusCode).toBe(403);
     expect(denied.json().error.code).toBe("forbidden");
@@ -184,7 +184,7 @@ describe("locations (F02 §3)", () => {
       role: "cashier",
       locationIds: [shop.id],
     });
-    const cashier = await loginAs(t, phone, temporaryPassword!);
+    const cashier = await firstLogin(t, phone, temporaryPassword!);
     const seen = (await cashier.get("/locations")).json<{ locations: Location[] }>().locations;
     expect(seen.map((l) => l.id)).toEqual([shop.id]);
     expect((await owner.get("/locations")).json().locations).toHaveLength(2);

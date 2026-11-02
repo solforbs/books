@@ -36,7 +36,7 @@ export class CreateMoneyPlaceUseCase {
     this.checks.number(input.type, input.number);
     const moneyPlace = await this.tenantDb.transaction(tenantId, async (t) => {
       await this.locations.assertUsable(tenantId, input.locationIds, scope, t);
-      await this.checks.settlesTo(input.type, input.settlesToId, null, t);
+      await this.checks.settlesTo(input.type, input.settlesToId, null, scope, t);
       const row = await this.places.create(
         tenantId,
         {
@@ -58,6 +58,8 @@ export class CreateMoneyPlaceUseCase {
         after: {
           type: moneyPlace.type,
           name: moneyPlace.name,
+          // A business till/paybill/bank number, not personal data: kept in full.
+          number: moneyPlace.number,
           settlesToId: moneyPlace.settlesToId,
           locationIds: moneyPlace.locationIds,
         },

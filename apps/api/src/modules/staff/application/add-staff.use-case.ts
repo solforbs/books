@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type { CreateStaffResponse, createStaffRequestSchema } from "@books/shared";
 import type { z } from "zod";
-import { isUniqueViolation, pgConstraint } from "../../../common/database/pg-errors";
+import { isUniqueViolation } from "../../../common/database/pg-errors";
 import { TenantDb } from "../../../common/tenancy/tenant-db";
 import { AuditService } from "../../audit/application/audit.service";
 import { MembersService } from "../../identity/application/members.service";
@@ -13,11 +13,17 @@ import { canManagePerson, isOwner } from "../domain/staff-policy";
 export type AddStaffInput = z.output<typeof createStaffRequestSchema>;
 
 /**
- * `POST /staff`. A new person gets a strong temporary password, returned once,
- * that must be changed at first login. Someone who already has an account (e.g.
- * works in another business) just gets a membership here and keeps their own
- * password. Owners may add anyone; a member with `add_staff` only cashiers and
- * storekeepers at their own locations, with the role's default switches.
+ * `POST /staff`. Always creates a NEW person with a strong temporary password,
+ * returned once, that must be changed at first login (and expires after 72 h).
+ *
+ * Phones and emails are not verified (no SMS), so a phone or email that already
+ * belongs to any account is refused with 409 `account_exists` and nothing about
+ * that account is revealed (S1a review #1): otherwise anyone could attach a
+ * stranger's account to their business, or learn who is registered. People who
+ * already have an account will join later with an in-person code.
+ *
+ * Owners may add anyone; a member with `add_staff` only cashiers and storekeepers
+ * at their own locations, with the role's default switches.
  */
 @Injectable()
 export class AddStaffUseCase {
@@ -35,28 +41,17 @@ export class AddStaffUseCase {
     if (!canManagePerson(access, input.role, locationIds) || (customSwitches && !isOwner(access))) {
       throw StaffErrors.forbidden();
     }
-    const people = await this.members.findPeople(input.phone, input.email);
-    if (people.length > 1) throw StaffErrors.identifierTaken();
-    const existing = people[0] ?? null;
+    if (await this.members.accountExists(input.phone, input.email)) {
+      throw StaffErrors.accountExists();
+    }
 
     const result = await this.tenantDb
       .transaction(access.tenantId, async (t) => {
         await this.locations.assertUsable(t.tenantId, locationIds, null, t);
-        if (existing && (await this.members.findMembershipOf(existing.id, t.tenantId, t))) {
-          throw StaffErrors.alreadyMember();
-        }
-        const created = existing
-          ? null
-          : await this.members.createPerson(
-              {
-                name: input.name,
-                phone: input.phone,
-                email: input.email,
-                language: input.language,
-              },
-              t,
-            );
-        const userId = existing?.id ?? created!.userId;
+        const { userId, temporaryPassword } = await this.members.createPerson(
+          { name: input.name, phone: input.phone, email: input.email, language: input.language },
+          t,
+        );
         const membershipId = await this.members.addMembership(
           t,
           userId,
@@ -65,13 +60,12 @@ export class AddStaffUseCase {
           locationIds,
         );
         const member = (await this.members.get(t.tenantId, membershipId, t))!;
-        return { member, temporaryPassword: created?.temporaryPassword ?? null };
+        return { member, temporaryPassword };
       })
       .catch((err: unknown) => {
-        // Lost a race with a concurrent request adding the same person.
-        if (!isUniqueViolation(err)) throw err;
-        if (pgConstraint(err)?.startsWith("memberships_")) throw StaffErrors.alreadyMember();
-        throw StaffErrors.identifierTaken();
+        // Lost a race with a concurrent sign-up or add using the same phone/email.
+        if (isUniqueViolation(err)) throw StaffErrors.accountExists();
+        throw err;
       });
 
     this.members.forget(result.member.userId);
@@ -80,7 +74,7 @@ export class AddStaffUseCase {
       action: "staff_added",
       targetId: result.member.membershipId,
       details: {
-        newPerson: result.temporaryPassword !== null,
+        newPerson: true,
         after: {
           name: result.member.name,
           phone: result.member.phone,

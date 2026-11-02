@@ -56,21 +56,6 @@ export class MembershipsRepository {
     return row ?? null;
   }
 
-  /** Any membership (active or switched off) of this user in this business. */
-  async findForUser(
-    userId: string,
-    tenantId: string,
-    tx: Executor = this.db,
-  ): Promise<MembershipRow | null> {
-    if (!isUuid(userId) || !isUuid(tenantId)) return null;
-    const [row] = await tx
-      .select()
-      .from(memberships)
-      .where(and(eq(memberships.userId, userId), eq(memberships.tenantId, tenantId)))
-      .limit(1);
-    return row ?? null;
-  }
-
   async findActiveForUser(userId: string): Promise<MembershipRow[]> {
     if (!isUuid(userId)) return [];
     return this.db
@@ -88,6 +73,26 @@ export class MembershipsRepository {
       .from(memberships)
       .where(eq(memberships.userId, userId));
     return rows.length;
+  }
+
+  /** The business of someone who belongs to exactly one (any status), else null. */
+  async soleTenantOf(userId: string): Promise<string | null> {
+    if (!isUuid(userId)) return null;
+    const rows = await this.db
+      .select({ tenantId: memberships.tenantId })
+      .from(memberships)
+      .where(eq(memberships.userId, userId))
+      .limit(2);
+    return rows.length === 1 ? rows[0]!.tenantId : null;
+  }
+
+  /** A login into (or selection of) this business: the staff list's "last login". */
+  async touchLastLogin(userId: string, tenantId: string, at: Date): Promise<void> {
+    if (!isUuid(userId) || !isUuid(tenantId)) return;
+    await this.db
+      .update(memberships)
+      .set({ lastLoginAt: at })
+      .where(and(eq(memberships.userId, userId), eq(memberships.tenantId, tenantId)));
   }
 
   /** One member of one business, with their user record. */

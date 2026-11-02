@@ -5,6 +5,7 @@ import { DB, type Database } from "../../../common/database/database.types";
 import type { RequestMeta } from "../../../common/security/request-meta";
 import { AuditService } from "../../audit/application/audit.service";
 import type { AuthContext } from "../domain/auth-context";
+import { isTemporaryPasswordExpired } from "../domain/auth-policy";
 import { IdentityErrors } from "../domain/identity-errors";
 import { personalWords } from "../domain/personal-words";
 import { PasswordHasher } from "../infrastructure/password-hasher";
@@ -49,6 +50,11 @@ export class ChangePasswordUseCase {
         throw IdentityErrors.accountLocked(attempt.retryAfterSeconds);
       }
       throw IdentityErrors.wrongCurrentPassword();
+    }
+    // The temporary password is a credential like any other: past 72 hours it no
+    // longer proves anything, here either (401, as at login).
+    if (isTemporaryPasswordExpired(user, new Date())) {
+      throw IdentityErrors.temporaryPasswordExpired();
     }
     // Refuse passwords built from the person's own name or email (policy "too_common").
     if (!isStrongPassword(input.newPassword, personalWords(user))) {

@@ -77,7 +77,7 @@ export class UpdateMoneyPlaceUseCase {
     }
     if (fields.number !== undefined) this.checks.number(row.type, fields.number);
     if (fields.settlesToId !== undefined) {
-      await this.checks.settlesTo(row.type, fields.settlesToId, row.id, t);
+      await this.checks.settlesTo(row.type, fields.settlesToId, row.id, scope, t);
     }
     if (fields.hidden === true && !row.hidden) {
       const balance = await this.balances.balanceOf(t.tenantId, row.id);
@@ -97,13 +97,16 @@ export class UpdateMoneyPlaceUseCase {
   }
 }
 
+/** Audit before/after. `number` is a business till/paybill/bank number: kept in full. */
 const summary = (p: {
   name: string;
+  number: string | null;
   hidden: boolean;
   settlesToId: string | null;
   locationIds: string[];
 }) => ({
   name: p.name,
+  number: p.number,
   hidden: p.hidden,
   settlesToId: p.settlesToId,
   locationIds: p.locationIds,

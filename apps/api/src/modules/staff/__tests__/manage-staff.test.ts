@@ -4,10 +4,12 @@ import {
   addStaff,
   createLocation,
   expectStatus,
+  firstLogin,
+  joinDirectly,
   loginAs,
   ownerWithShop,
 } from "../../../../test/business-fixtures";
-import { PASSWORD, randomPhone } from "../../../../test/fixtures";
+import { NEW_PASSWORD, PASSWORD, randomPhone } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
 import { auditLog } from "../../audit/infrastructure/audit-log.table";
@@ -29,8 +31,9 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
       role: "cashier",
       locationIds: [biz.shop.id],
     });
-    const cashier = await loginAs(t, phone, added.temporaryPassword!);
-    return { ...biz, phone, member: added.member, temp: added.temporaryPassword!, cashier };
+    const cashier = await firstLogin(t, phone, added.temporaryPassword);
+    // `password` is the cashier's own password, set at first login.
+    return { ...biz, phone, member: added.member, password: NEW_PASSWORD, cashier };
   }
 
   it("T8: the only owner cannot switch themselves off or step down (last_owner)", async () => {
@@ -59,14 +62,14 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
     // A name change of one's own is fine.
     expectStatus(await owner.patch(`/staff/${ownerMembershipId}`, { name: "Amina H." }), 200);
     // The other owner may switch this one off; then the remaining one is the last owner.
-    const coOwner = await loginAs(t, phone, co.temporaryPassword!);
+    const coOwner = await firstLogin(t, phone, co.temporaryPassword);
     expectStatus(await coOwner.post(`/staff/${ownerMembershipId}/switch-off`), 200);
     const last = await coOwner.post(`/staff/${co.member.membershipId}/switch-off`);
     expect(last.json().error.code).toBe("last_owner");
   });
 
   it("T7: switching off cuts the person's very next request and refresh; history stays", async () => {
-    const { owner, cashier, member, tenantId, phone, temp } = await withCashier();
+    const { owner, cashier, member, tenantId, phone, password } = await withCashier();
     expectStatus(await cashier.get("/locations"), 200);
 
     const off = expectStatus(await owner.post(`/staff/${member.membershipId}/switch-off`), 200);
@@ -76,7 +79,7 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
     // Logging in again finds no business to work in.
     const again = new TestClient(t.app);
     const login = expectStatus(
-      await again.post("/auth/login", { identifier: phone, password: temp }),
+      await again.post("/auth/login", { identifier: phone, password }),
       200,
     );
     expect(login.json().memberships).toEqual([]);
@@ -88,7 +91,7 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
       listed.find((m: { membershipId: string }) => m.membershipId === member.membershipId).status,
     ).toBe("switched_off");
     expectStatus(await owner.post(`/staff/${member.membershipId}/switch-on`), 200);
-    const back = await loginAs(t, phone, temp);
+    const back = await loginAs(t, phone, password);
     expectStatus(await back.get("/locations"), 200);
 
     const actions = (
@@ -186,7 +189,7 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
       locationIds: [shop.id],
       permissions: { add_staff: true },
     });
-    const manager = await loginAs(t, phone, m.temporaryPassword!);
+    const manager = await firstLogin(t, phone, m.temporaryPassword);
     for (const client of [manager, cashier]) {
       for (const res of [
         await client.patch(`/staff/${member.membershipId}`, { name: "X Y" }),
@@ -206,13 +209,13 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
   });
 
   it("T9: owner or an add_staff manager resets a cashier's password; the old one stops working", async () => {
-    const { owner, cashier, member, phone, temp, shop } = await withCashier();
+    const { owner, cashier, member, phone, password, shop } = await withCashier();
     const res = expectStatus(await owner.post(`/staff/${member.membershipId}/reset-password`), 200);
     const fresh = res.json().temporaryPassword as string;
+    expect(res.headers["cache-control"]).toBe("no-store");
     expect((await cashier.get("/auth/me")).json().error.code).toBe("session_expired");
     expect(
-      (await new TestClient(t.app).post("/auth/login", { identifier: phone, password: temp }))
-        .statusCode,
+      (await new TestClient(t.app).post("/auth/login", { identifier: phone, password })).statusCode,
     ).toBe(401);
     const back = await loginAs(t, phone, fresh);
     expect((await back.get("/auth/me")).json().user.mustChangePassword).toBe(true);
@@ -225,7 +228,7 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
       locationIds: [shop.id],
       permissions: { add_staff: true },
     });
-    const manager = await loginAs(t, mPhone, m.temporaryPassword!);
+    const manager = await firstLogin(t, mPhone, m.temporaryPassword);
     expectStatus(await manager.post(`/staff/${member.membershipId}/reset-password`), 200);
     // ...but not another manager's, nor their own.
     const own = await manager.post(`/staff/${m.member.membershipId}/reset-password`);
@@ -235,13 +238,9 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
   it("refuses to reset the password of someone who also works in another business", async () => {
     const a = await ownerWithShop(t);
     const b = await ownerWithShop(t);
-    const { member } = await addStaff(a.owner, {
-      name: "Shared Person",
-      phone: b.register.user.phone!,
-      role: "cashier",
-      locationIds: [a.shop.id],
-    });
-    const res = await a.owner.post(`/staff/${member.membershipId}/reset-password`);
+    // B's owner also works in A (earlier data; adding staff no longer attaches accounts).
+    const membershipId = await joinDirectly(t, b.ownerUserId, a.tenantId, "cashier", [a.shop.id]);
+    const res = await a.owner.post(`/staff/${membershipId}/reset-password`);
     expect(res.statusCode).toBe(403);
     expect(res.json().error).toMatchObject({
       code: "forbidden",
@@ -251,12 +250,12 @@ describe("managing staff (F02 §4.3, §2.5)", () => {
   });
 
   it("shows the owner a person's login history from the audit log", async () => {
-    const { owner, member, phone, temp } = await withCashier();
+    const { owner, member, phone, password } = await withCashier();
     await new TestClient(t.app).post("/auth/login", {
       identifier: phone,
       password: "Wrong-Password-99",
     });
-    await loginAs(t, phone, temp);
+    await loginAs(t, phone, password);
     const res = expectStatus(await owner.get(`/staff/${member.membershipId}/logins`), 200);
     const entries = res.json().entries as { outcome: string; at: string; device: string | null }[];
     expect(entries.map((e) => e.outcome)).toEqual(["success", "failure", "success"]);

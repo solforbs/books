@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PERMISSIONS, myAccessResponseSchema } from "@books/shared";
-import { addStaff, expectStatus, loginAs, ownerWithShop } from "../../../../test/business-fixtures";
+import {
+  addStaff,
+  expectStatus,
+  firstLogin,
+  ownerWithShop,
+} from "../../../../test/business-fixtures";
 import { randomPhone } from "../../../../test/fixtures";
 import { createTestApp, type TestApp } from "../../../../test/test-app";
 import { TestClient } from "../../../../test/test-client";
@@ -45,7 +50,7 @@ describe("GET /me/permissions (F02 §4.2, G1)", () => {
     });
     expect((await access(owner)).approvalsActive).toBe(true);
 
-    const cashier = await loginAs(t, phone, temporaryPassword!);
+    const cashier = await firstLogin(t, phone, temporaryPassword!);
     expect(await access(cashier)).toEqual({
       role: "cashier",
       locationIds: [shop.id],

@@ -10,7 +10,6 @@ import {
   type MembershipUpdate,
 } from "../infrastructure/memberships.repository";
 import { PasswordHasher } from "../infrastructure/password-hasher";
-import type { UserRow } from "../infrastructure/tables/users.table";
 import { UsersRepository } from "../infrastructure/users.repository";
 import { TenantAccess } from "./tenant-access";
 
@@ -47,18 +46,19 @@ export class MembersService {
     return record ? (await this.toMembers(tenantId, [record], within))[0]! : null;
   }
 
-  /** Existing people with this phone or email (0, 1, or 2 different people). */
-  findPeople(phone?: string, email?: string): Promise<UserRow[]> {
-    return this.users.findByPhoneOrEmail(phone, email);
+  /** Whether any account already uses this phone or this email. */
+  accountExists(phone?: string, email?: string): Promise<boolean> {
+    return this.users.existsWith(phone, email);
   }
 
-  findMembershipOf(userId: string, tenantId: string, within?: TenantTx) {
-    return this.memberships.findForUser(userId, tenantId, within?.tx);
-  }
-
-  /** How many businesses (any status) the person belongs to. */
-  countBusinessesOf(userId: string): Promise<number> {
-    return this.memberships.countForUser(userId);
+  /**
+   * Locks the person's user row for the rest of the transaction (which also holds
+   * off new memberships for them) and tells whether this is their only business.
+   * Their password and name belong to them, not to one business (S1a review #3, #8).
+   */
+  async lockIfOnlyIn(t: TenantTx, userId: string): Promise<boolean> {
+    await this.users.lockById(userId, t.tx);
+    return (await this.memberships.countForUser(userId, t.tx)) <= 1;
   }
 
   /** A new user with a strong temporary password; returns it in plain text, once. */
@@ -105,11 +105,16 @@ export class MembersService {
     return this.memberships.lockActiveOwners(t.tenantId, t.tx);
   }
 
-  /** New temporary password for an existing person; returns it in plain text, once. */
-  async resetToTemporaryPassword(userId: string): Promise<string> {
-    const user = await this.users.findById(userId);
+  /**
+   * New temporary password for an existing person; returns it in plain text, once.
+   * Call inside the transaction that checked `lockIfOnlyIn`, so the check and the
+   * write cannot be separated by a new membership.
+   */
+  async resetToTemporaryPassword(t: TenantTx, userId: string): Promise<string> {
+    const user = await this.users.findById(userId, t.tx);
     const temporaryPassword = generateTemporaryPassword(user ? personalWords(user) : []);
-    await this.users.setTemporaryPassword(userId, await this.hasher.hash(temporaryPassword));
+    const hash = await this.hasher.hash(temporaryPassword);
+    await this.users.setTemporaryPassword(userId, hash, t.tx);
     return temporaryPassword;
   }
 
@@ -153,7 +158,8 @@ export class MembersService {
       permissions: m.permissionOverrides,
       status: m.status,
       mustChangePassword: u.mustChangePassword,
-      lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+      // Logins into THIS business only (S1a review #4), never the person's other ones.
+      lastLoginAt: m.lastLoginAt?.toISOString() ?? null,
       createdAt: m.createdAt.toISOString(),
     }));
   }

@@ -5,6 +5,7 @@ import {
   createdAtColumn,
   idColumn,
   oneOf,
+  timestampTz,
   updatedAtColumn,
 } from "../../../../common/database/columns";
 import { tenants } from "./tenants.table";
@@ -37,6 +38,8 @@ export const memberships = pgTable(
       .$type<PermissionOverrides>()
       .notNull()
       .default({}),
+    /** Last login or business selection into THIS business (staff list, F02 §6). */
+    lastLoginAt: timestampTz("last_login_at"),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
   },

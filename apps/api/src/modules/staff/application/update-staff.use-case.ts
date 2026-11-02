@@ -19,6 +19,9 @@ export type UpdateStaffInput = z.output<typeof updateStaffRequestSchema>;
 
 /**
  * `PATCH /staff/:membershipId` (owner only): name, role, locations, switches.
+ * The name is the person's, shared by all their businesses: someone who also
+ * works elsewhere is not renamed (403 `forbidden`, details.reason
+ * `member_of_other_business`, as for reset-password; S1a review #3).
  * Takes effect on the person's next request (their cached membership is
  * dropped after commit). Owners have no location list: they see everything.
  */
@@ -52,7 +55,14 @@ export class UpdateStaffUseCase {
       assertHasLocation(role, locationIds);
       if (input.locationIds) await this.locations.assertUsable(t.tenantId, locationIds, null, t);
 
-      if (input.name !== undefined) await this.members.setName(t, before.userId, input.name);
+      if (input.name !== undefined && input.name !== before.name) {
+        // A name belongs to the person: only renamed from their only business (or by themselves).
+        const own = before.userId === access.userId;
+        if (!own && !(await this.members.lockIfOnlyIn(t, before.userId))) {
+          throw StaffErrors.memberOfOtherBusiness();
+        }
+        await this.members.setName(t, before.userId, input.name);
+      }
       if (input.role !== undefined || input.permissions !== undefined) {
         await this.members.updateMembership(t, membershipId, {
           ...(input.role !== undefined ? { role: input.role } : {}),

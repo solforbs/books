@@ -1,8 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gt, ne, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import { DB, type Database, type Executor } from "../../../common/database/database.types";
 import { isUuid } from "../../../common/database/uuid";
 import { refreshSessions, type RefreshSessionRow } from "./tables/refresh-sessions.table";
+import { users } from "./tables/users.table";
 
 export interface NewRefreshSession {
   familyId: string;
@@ -60,6 +61,29 @@ export class RefreshSessionsRepository {
     return rows.length > 0;
   }
 
+  /**
+   * For the AuthGuard, in one query: null when the session family has no active,
+   * unexpired token; otherwise whether its user still has to change a temporary password.
+   */
+  async activeSessionState(
+    familyId: string,
+    now: Date,
+  ): Promise<{ mustChangePassword: boolean } | null> {
+    const [row] = await this.db
+      .select({ mustChangePassword: users.mustChangePassword })
+      .from(refreshSessions)
+      .innerJoin(users, eq(users.id, refreshSessions.userId))
+      .where(
+        and(
+          eq(refreshSessions.familyId, familyId),
+          eq(refreshSessions.status, "active"),
+          gt(refreshSessions.expiresAt, now),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
   /** Revocation flips every token of a family (used ones too) to `revoked`. */
   async isFamilyRevoked(familyId: string): Promise<boolean> {
     const rows = await this.db
@@ -99,6 +123,35 @@ export class RefreshSessionsRepository {
           eq(refreshSessions.userId, userId),
           ne(refreshSessions.status, "revoked"),
           exceptFamilyId ? ne(refreshSessions.familyId, exceptFamilyId) : undefined,
+        ),
+      );
+  }
+
+  /**
+   * Signs the user out of one business only (S1a review #2): every session family
+   * currently working in it is revoked. Their sessions in other businesses, or
+   * not in any business yet, stay.
+   */
+  async revokeForUserInTenant(userId: string, tenantId: string): Promise<void> {
+    if (!isUuid(userId) || !isUuid(tenantId)) return;
+    const inTenant = this.db
+      .select({ familyId: refreshSessions.familyId })
+      .from(refreshSessions)
+      .where(
+        and(
+          eq(refreshSessions.userId, userId),
+          eq(refreshSessions.status, "active"),
+          eq(refreshSessions.activeTenantId, tenantId),
+        ),
+      );
+    await this.db
+      .update(refreshSessions)
+      .set({ status: "revoked", revokedAt: new Date() })
+      .where(
+        and(
+          eq(refreshSessions.userId, userId),
+          ne(refreshSessions.status, "revoked"),
+          inArray(refreshSessions.familyId, inTenant),
         ),
       );
   }
