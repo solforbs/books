@@ -2,10 +2,19 @@ import { Navigate, Route, Routes } from "react-router";
 import { PublicOnly, RequireSession } from "@/features/auth/components/route-guards";
 import { ChangePasswordPage } from "@/features/auth/pages/change-password-page";
 import { ChooseBusinessPage } from "@/features/auth/pages/choose-business-page";
-import { HomePage } from "@/features/auth/pages/home-page";
 import { LoginPage } from "@/features/auth/pages/login-page";
 import { RecoverPage } from "@/features/auth/pages/recover-page";
 import { RegisterPage } from "@/features/auth/pages/register-page";
+import { BusinessDetailsPage } from "@/features/business/pages/business-details-page";
+import { HomePage } from "@/features/home/pages/home-page";
+import { LocationsPage } from "@/features/locations/pages/locations-page";
+import { MoneyPlacesPage } from "@/features/locations/pages/money-places-page";
+import { RequireSettingsAccess } from "@/features/settings/components/require-settings-access";
+import { SettingsMenuPage } from "@/features/settings/pages/settings-menu-page";
+import { MainLayout } from "@/features/shell/components/main-layout";
+import { AddStaffPage } from "@/features/staff/pages/add-staff-page";
+import { StaffDetailPage } from "@/features/staff/pages/staff-detail-page";
+import { StaffListPage } from "@/features/staff/pages/staff-list-page";
 
 export function AppRoutes() {
   return (
@@ -51,13 +60,63 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/"
         element={
           <RequireSession step="home">
-            <HomePage />
+            <MainLayout />
           </RequireSession>
         }
-      />
+      >
+        <Route index element={<HomePage />} />
+        <Route path="settings" element={<SettingsMenuPage />} />
+        <Route
+          path="settings/business"
+          element={
+            <RequireSettingsAccess entry="business">
+              <BusinessDetailsPage />
+            </RequireSettingsAccess>
+          }
+        />
+        <Route
+          path="settings/locations"
+          element={
+            <RequireSettingsAccess entry="locations">
+              <LocationsPage />
+            </RequireSettingsAccess>
+          }
+        />
+        <Route
+          path="settings/money-places"
+          element={
+            <RequireSettingsAccess entry="moneyPlaces">
+              <MoneyPlacesPage />
+            </RequireSettingsAccess>
+          }
+        />
+        <Route
+          path="settings/staff"
+          element={
+            <RequireSettingsAccess entry="staff">
+              <StaffListPage />
+            </RequireSettingsAccess>
+          }
+        />
+        <Route
+          path="settings/staff/new"
+          element={
+            <RequireSettingsAccess entry="staff">
+              <AddStaffPage />
+            </RequireSettingsAccess>
+          }
+        />
+        <Route
+          path="settings/staff/:membershipId"
+          element={
+            <RequireSettingsAccess entry="staff">
+              <StaffDetailPage />
+            </RequireSettingsAccess>
+          }
+        />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

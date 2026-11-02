@@ -16,8 +16,10 @@ const CONTRACT_MESSAGES = new Set([
   "invalid_email",
   "phone_or_email_required",
   "weak_password",
+  "invalid_kra_pin",
+  "location_required",
 ]);
-const NAME_FIELDS = new Set(["businessName", "ownerName"]);
+const NAME_FIELDS = new Set(["businessName", "ownerName", "name"]);
 
 function issueKey(issue: Issue): string {
   const field = String(issue.path[0] ?? "");

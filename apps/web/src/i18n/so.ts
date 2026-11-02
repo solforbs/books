@@ -1,3 +1,4 @@
+import { soSettings } from "./so-settings";
 import type { Translations } from "./types";
 
 /**
@@ -24,6 +25,13 @@ export const so: Translations = {
     hidePassword: "Qari furaha sirta ah",
     working: "Fadlan sug…",
     retry: "Isku day mar kale",
+    cancel: "Jooji",
+    save: "Kaydi",
+    saved: "Waa la kaydiyay",
+    edit: "Wax ka beddel",
+    // TODO(translate-review)
+    more: "Wax kale",
+    done: "Dhammaad",
   },
   login: {
     title: "Gal",
@@ -126,6 +134,8 @@ export const so: Translations = {
     greeting: "Salaan, {{name}}",
     business: "Ganacsiga: {{name}}",
     // TODO(translate-review)
+    location: "Goobta: {{name}}",
+    // TODO(translate-review)
     placeholder: "Bogga guud dhawaan ayuu imaan doonaa.",
   },
   install: {
@@ -160,6 +170,20 @@ export const so: Translations = {
     // TODO(translate-review)
     refresh_in_progress:
       "Fadhigaaga waxaa lagu cusboonaysiinayaa daaqad kale. Fadlan isku day mar kale.",
+    // TODO(translate-review): every location, money place and staff message below.
+    location_not_found: "Goobtan lama helin. Waxaa laga yaabaa in la xiray.",
+    location_not_empty: "Goobtan weli waxay leedahay alaab ama lacag. Marka hore u wareeji.",
+    location_closed: "Goobtan waa xiran tahay.",
+    last_location: "Ganacsigu wuxuu u baahan yahay ugu yaraan hal goob oo furan.",
+    money_place_not_found: "Meeshan lacagta lama helin.",
+    money_place_not_empty: "Meeshan lacagta weli lacag ayaa ku jirta. Marka hore u wareeji.",
+    invalid_settles_to: "Dooro mid ka mid ah akoonnadaada bangiga.",
+    forbidden: "Laguuma oggola inaad tan samayso. Weydii milkiilaha.",
+    already_member: "Qofkan horay ayuu uga shaqeeyaa ganacsigaaga.",
+    last_owner: "Waa inuu jiraa ugu yaraan hal milkiile. Marka hore ku dar milkiile kale.",
+    cannot_change_self: "Ma beddeli kartid doorkaaga, mana damin kartid naftaada.",
+    location_required: "Dooro ugu yaraan hal goob.",
+    member_not_found: "Shaqaalahan lama helin.",
     unknown: "Wax baa khaldamay. Fadlan isku day mar kale.",
   },
   validation: {
@@ -171,5 +195,9 @@ export const so: Translations = {
     name_too_short: "Geli ugu yaraan 2 xaraf.",
     required: "Tan waa loo baahan yahay.",
     check_field: "Fadlan hubi tan.",
+    // TODO(translate-review)
+    invalid_kra_pin: "KRA PIN waa hal xaraf, 9 lambar iyo hal xaraf, sida A123456789B.",
+    location_required: "Dooro ugu yaraan hal goob.",
   },
+  ...soSettings,
 };

@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { defaultShopRoutes } from "./shop-fixtures";
 
 export interface MockResponse {
   status?: number;
@@ -19,11 +20,13 @@ export interface RecordedCall {
 
 /**
  * Replaces global fetch with a fake API. A handler list is consumed in order (the last one
- * repeats), so tests can describe "401 first, then 200". Unknown routes answer 404.
+ * repeats), so tests can describe "401 first, then 200". The logged-in shell calls fall back
+ * to a one-shop owner (see `defaultShopRoutes`); other unknown routes answer 404.
  */
 export function mockFetch(routes: Routes) {
   const calls: RecordedCall[] = [];
   const counters = new Map<string, number>();
+  const fallback = defaultShopRoutes();
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const method = (init.method ?? "GET").toUpperCase();
@@ -32,7 +35,7 @@ export function mockFetch(routes: Routes) {
     const body = typeof init.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
     calls.push({ method, path, init, body });
 
-    const entry = routes[key];
+    const entry = routes[key] ?? fallback[key];
     const list = entry === undefined ? [] : Array.isArray(entry) ? entry : [entry];
     const index = counters.get(key) ?? 0;
     counters.set(key, index + 1);
