@@ -1,5 +1,5 @@
 import { createStaffRequestSchema, type CreateStaffResponse, type Role } from "@books/shared";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
@@ -25,10 +25,14 @@ export function AddStaffForm({ onCreated }: { onCreated: (result: CreateStaffRes
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>(roles.includes("cashier") ? "cashier" : "storekeeper");
-  // With one possible location it is ticked already (G2).
-  const [locationIds, setLocationIds] = useState<string[]>(
-    locations.length === 1 && locations[0] ? [locations[0].id] : [],
-  );
+  // With one possible location it is ticked already (G2). Locations load after the
+  // first render, so tick it once they arrive unless the person has chosen already.
+  const onlyLocationId = locations.length === 1 ? locations[0]?.id : undefined;
+  const [locationIds, setLocationIds] = useState<string[]>(onlyLocationId ? [onlyLocationId] : []);
+  const [touchedLocations, setTouchedLocations] = useState(false);
+  useEffect(() => {
+    if (onlyLocationId && !touchedLocations) setLocationIds([onlyLocationId]);
+  }, [onlyLocationId, touchedLocations]);
   const { fieldError, showIssues, clear } = useFieldErrors();
 
   const submit = (event: FormEvent) => {
@@ -78,7 +82,10 @@ export function AddStaffForm({ onCreated }: { onCreated: (result: CreateStaffRes
         role={role}
         locationIds={locationIds}
         onRoleChange={setRole}
-        onLocationsChange={setLocationIds}
+        onLocationsChange={(ids) => {
+          setTouchedLocations(true);
+          setLocationIds(ids);
+        }}
         locationError={fieldError("locationIds")}
       />
       <FormError error={create.error} />

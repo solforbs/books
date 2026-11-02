@@ -34,6 +34,15 @@ async function fillAndSave(user: ReturnType<typeof renderShop>["user"]) {
 }
 
 describe("Settings -> Staff -> Add", () => {
+  it("ticks the only location once the locations have loaded (G2)", async () => {
+    renderShop("/settings/staff/new", {
+      ...routes(TEMP),
+      "GET /locations": { body: { locations: [shop1] } },
+    });
+    await screen.findByLabelText("Name");
+    expect(await screen.findByRole("checkbox", { name: "Shop 1" })).toBeChecked();
+  });
+
   it("shows the temporary password once and forgets it after leaving", async () => {
     const { user, calls, client } = renderShop("/settings/staff/new", routes(TEMP));
     await fillAndSave(user);
