@@ -137,5 +137,7 @@ export const AUTH_ERROR_CODES = [
   "not_a_member",
   "invalid_recovery_code",
   "csrf_header_missing",
+  "password_change_required",
+  "temporary_password_expired",
 ] as const;
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[number];
