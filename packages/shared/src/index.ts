@@ -3,4 +3,8 @@ export * from "./imei/imei";
 export * from "./identity/phone";
 export * from "./identity/password-policy";
 export * from "./identity/roles";
+export * from "./identity/permissions";
 export * from "./contracts/auth.contract";
+export * from "./contracts/business.contract";
+export * from "./contracts/locations.contract";
+export * from "./contracts/staff.contract";
