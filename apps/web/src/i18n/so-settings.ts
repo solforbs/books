@@ -128,12 +128,12 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     lastLogin: "Galitaankii u dambeeyay: {{when}}",
     neverLoggedIn: "Weli ma uusan galin",
     status: { active: "Firfircoon", switched_off: "La damiyay" },
-    existingUser:
-      "{{name}} horay ayuu u lahaa akoon Books. Wuxuu ku galayaa taleefankiisa ama iimaylkiisa iyo furahiisa sirta ah.",
     tempPassword: {
       title: "Furaha sirta ah ee ku meel gaarka ah ee {{name}}",
       explain:
         "Furahan qofka sii. Wuxuu ku galayaa taleefankiisa ama iimaylkiisa iyo furahan, kadibna waa inuu doortaa furihiisa.",
+      // TODO(translate-review)
+      expires: "Furahan sirta ah ee ku meel gaarka ah wuxuu shaqeeyaa 72 saacadood.",
       once: "Furahan hadda keliya ayaa la muujinayaa. Qor ama koobiyee ka hor intaadan bogga ka bixin.",
       copy: "Koobiyee furaha",
       copied: "Furaha waa la koobiyeeyay",

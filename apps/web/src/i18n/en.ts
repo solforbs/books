@@ -133,6 +133,9 @@ export const en = {
     not_a_member: "You are not part of this business.",
     invalid_recovery_code: "This recovery code is not correct or was already used.",
     csrf_header_missing: "Something went wrong. Please reload the page.",
+    password_change_required: "Please choose your own password first.",
+    temporary_password_expired:
+      "This temporary password has expired. Ask the shop owner to reset your password.",
     network_error: "No connection to the server. Check your internet and try again.",
     invalid_response: "The server sent an unexpected answer. Please try again.",
     refresh_in_progress: "Your session is being updated in another window. Please try again.",
@@ -144,6 +147,10 @@ export const en = {
     money_place_not_empty: "This money place still has money in it. Move the money first.",
     invalid_settles_to: "Choose one of your bank accounts.",
     forbidden: "You are not allowed to do this. Ask the owner.",
+    member_of_other_business:
+      "This person also works in another business on Books, so you cannot change this for them.",
+    account_exists:
+      "This phone or email already has a Books account. Adding people who already use Books will come later.",
     already_member: "This person already works in your business.",
     last_owner: "There must always be at least one owner. Add another owner first.",
     cannot_change_self: "You cannot change your own role or switch yourself off.",

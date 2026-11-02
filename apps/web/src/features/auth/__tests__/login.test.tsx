@@ -89,6 +89,15 @@ describe("login", () => {
     );
   });
 
+  it("explains an expired temporary password", async () => {
+    mockFetch({ ...LOGGED_OUT, "POST /auth/login": apiError(401, "temporary_password_expired") });
+    const { user } = renderApp("/login");
+    await logIn(user, "0712345678");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This temporary password has expired. Ask the shop owner to reset your password.",
+    );
+  });
+
   it("switches the screen to Somali", async () => {
     mockFetch(LOGGED_OUT);
     const { user } = renderApp("/login");

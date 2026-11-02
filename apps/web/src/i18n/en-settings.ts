@@ -124,12 +124,11 @@ export const enSettings = {
     lastLogin: "Last login: {{when}}",
     neverLoggedIn: "Has not logged in yet",
     status: { active: "Active", switched_off: "Switched off" },
-    existingUser:
-      "{{name}} already has a Books account. They log in with their own phone or email and their own password.",
     tempPassword: {
       title: "Temporary password for {{name}}",
       explain:
         "Give this password to the person. They log in with their phone or email and this password, then must choose their own password.",
+      expires: "This temporary password works for 72 hours.",
       once: "This password is shown only now. Write it down or copy it before you leave this screen.",
       copy: "Copy password",
       copied: "Password copied",

@@ -2,7 +2,6 @@ import type { CreateStaffResponse } from "@books/shared";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SettingsPage } from "@/features/settings/components/settings-page";
@@ -10,8 +9,8 @@ import { AddStaffForm } from "../components/add-staff-form";
 import { TemporaryPasswordPanel } from "../components/temporary-password-panel";
 
 /**
- * Settings -> Staff -> Add. After saving, a new person's temporary password is shown once;
- * someone who already has an account (e.g. from another business) keeps their own password.
+ * Settings -> Staff -> Add. After saving, the new person's temporary password is shown once.
+ * (People who already have a Books account are refused by the server: `account_exists`.)
  * The result lives only in this page's state, so leaving the page forgets it.
  */
 export function AddStaffPage() {
@@ -23,11 +22,7 @@ export function AddStaffPage() {
     <SettingsPage title={t("staff.addTitle")} backTo="/settings/staff">
       {result ? (
         <>
-          {result.temporaryPassword ? (
-            <TemporaryPasswordPanel name={result.member.name} password={result.temporaryPassword} />
-          ) : (
-            <Alert variant="success">{t("staff.existingUser", { name: result.member.name })}</Alert>
-          )}
+          <TemporaryPasswordPanel name={result.member.name} password={result.temporaryPassword} />
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => navigate("/settings/staff")}>{t("common.done")}</Button>
             <Button variant="secondary" onClick={() => setResult(null)}>

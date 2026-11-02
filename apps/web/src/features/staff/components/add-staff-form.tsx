@@ -9,6 +9,7 @@ import { FormError } from "@/features/auth/components/form-error";
 import { useFieldErrors } from "@/features/auth/hooks/use-field-errors";
 import { blankToUndefined } from "@/features/auth/validation";
 import { useLocations } from "@/features/locations/hooks/use-locations";
+import { isApiError } from "@/lib/api";
 import { useCreateStaff } from "../hooks/use-staff";
 import { assignableLocations, assignableRoles } from "../staff-scope";
 import { RoleLocationFields } from "./role-location-fields";
@@ -34,6 +35,16 @@ export function AddStaffForm({ onCreated }: { onCreated: (result: CreateStaffRes
     if (onlyLocationId && !touchedLocations) setLocationIds([onlyLocationId]);
   }, [onlyLocationId, touchedLocations]);
   const { fieldError, showIssues, clear } = useFieldErrors();
+  // The server refuses a phone/email that already has an account (`account_exists`). The
+  // message belongs next to the contact field, not at the bottom of the form.
+  const accountExists = isApiError(create.error) && create.error.code === "account_exists";
+  const accountExistsOn = accountExists ? (phone.trim() ? "phone" : "email") : null;
+  const contactError = (field: "phone" | "email") =>
+    fieldError(field) ?? (accountExistsOn === field ? t("errors.account_exists") : undefined);
+  const editContact = (set: (value: string) => void, value: string) => {
+    if (accountExists) create.reset();
+    set(value);
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -54,25 +65,29 @@ export function AddStaffForm({ onCreated }: { onCreated: (result: CreateStaffRes
       <FormField label={t("staff.name")} error={fieldError("name")}>
         {(a11y) => <Input {...a11y} value={name} onChange={(e) => setName(e.target.value)} />}
       </FormField>
-      <FormField label={t("staff.phone")} hint={t("staff.contactHint")} error={fieldError("phone")}>
+      <FormField
+        label={t("staff.phone")}
+        hint={t("staff.contactHint")}
+        error={contactError("phone")}
+      >
         {(a11y) => (
           <Input
             {...a11y}
             type="tel"
             inputMode="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => editContact(setPhone, e.target.value)}
           />
         )}
       </FormField>
-      <FormField label={t("staff.email")} error={fieldError("email")}>
+      <FormField label={t("staff.email")} error={contactError("email")}>
         {(a11y) => (
           <Input
             {...a11y}
             type="email"
             inputMode="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => editContact(setEmail, e.target.value)}
           />
         )}
       </FormField>
@@ -88,7 +103,7 @@ export function AddStaffForm({ onCreated }: { onCreated: (result: CreateStaffRes
         }}
         locationError={fieldError("locationIds")}
       />
-      <FormError error={create.error} />
+      <FormError error={accountExists ? null : create.error} />
       <Button type="submit" disabled={create.isPending}>
         {create.isPending ? t("common.working") : t("common.save")}
       </Button>

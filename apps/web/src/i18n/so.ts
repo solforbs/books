@@ -168,6 +168,11 @@ export const so: Translations = {
     // TODO(translate-review)
     invalid_recovery_code: "Koodkan soo celinta sax ma aha ama horay ayaa loo isticmaalay.",
     csrf_header_missing: "Wax baa khaldamay. Fadlan dib u soo rar bogga.",
+    // TODO(translate-review)
+    password_change_required: "Fadlan marka hore dooro furahaaga sirta ah.",
+    // TODO(translate-review)
+    temporary_password_expired:
+      "Furahan sirta ah ee ku meel gaarka ah wuu dhacay. Weydii milkiilaha inuu dib u dejiyo furahaaga.",
     network_error: "Server-ka lama gaari karo. Hubi internetkaaga oo isku day mar kale.",
     // TODO(translate-review)
     invalid_response: "Server-ku wuxuu soo diray jawaab aan la filayn. Fadlan isku day mar kale.",
@@ -183,6 +188,10 @@ export const so: Translations = {
     money_place_not_empty: "Meeshan lacagta weli lacag ayaa ku jirta. Marka hore u wareeji.",
     invalid_settles_to: "Dooro mid ka mid ah akoonnadaada bangiga.",
     forbidden: "Laguuma oggola inaad tan samayso. Weydii milkiilaha.",
+    member_of_other_business:
+      "Qofkan wuxuu sidoo kale ka shaqeeyaa ganacsi kale oo Books ah, sidaa darteed tan uma beddeli kartid.",
+    account_exists:
+      "Taleefankan ama iimaylkan horay ayuu u leeyahay akoon Books. Ku darista dadka horay u isticmaala Books mar dambe ayay iman doontaa.",
     already_member: "Qofkan horay ayuu uga shaqeeyaa ganacsigaaga.",
     last_owner: "Waa inuu jiraa ugu yaraan hal milkiile. Marka hore ku dar milkiile kale.",
     cannot_change_self: "Ma beddeli kartid doorkaaga, mana damin kartid naftaada.",

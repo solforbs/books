@@ -40,6 +40,7 @@ export function TemporaryPasswordPanel({ name, password }: { name: string; passw
         {password}
       </p>
       <p className="mt-3 text-base text-slate-800">{t("staff.tempPassword.explain")}</p>
+      <p className="mt-1 text-base text-slate-800">{t("staff.tempPassword.expires")}</p>
       <p className="mt-1 text-base font-semibold text-slate-900">{t("staff.tempPassword.once")}</p>
       <Button variant="secondary" className="mt-3" onClick={() => void copy()}>
         <Copy aria-hidden className="h-5 w-5" />

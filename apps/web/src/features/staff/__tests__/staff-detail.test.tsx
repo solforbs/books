@@ -25,6 +25,17 @@ const routes = {
   "PATCH /staff/m2": { body: { member: cashier } },
 };
 
+const OTHER_BUSINESS = {
+  status: 403,
+  body: {
+    error: {
+      code: "forbidden",
+      message: "forbidden",
+      details: { reason: "member_of_other_business" },
+    },
+  },
+};
+
 describe("Settings -> Staff -> person", () => {
   it("owner: switches start from the role defaults plus this person's changes", async () => {
     const { user, calls } = renderShop("/settings/staff/m2", routes);
@@ -67,6 +78,40 @@ describe("Settings -> Staff -> person", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "There must always be at least one owner",
     );
+  });
+
+  it("explains a refused change for someone who also works in another business", async () => {
+    const { user } = renderShop("/settings/staff/m2", {
+      ...routes,
+      "PATCH /staff/m2": OTHER_BUSINESS,
+    });
+    await user.selectOptions(await screen.findByLabelText("Role"), "storekeeper");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This person also works in another business on Books, so you cannot change this for them.",
+    );
+  });
+
+  it("uses the same message when a password reset is refused for that reason", async () => {
+    const { user } = renderShop("/settings/staff/m2", {
+      ...routes,
+      "POST /staff/m2/reset-password": OTHER_BUSINESS,
+    });
+    await user.click(await screen.findByRole("button", { name: "Reset password" }));
+    await user.click(screen.getByRole("button", { name: "Reset password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This person also works in another business on Books",
+    );
+    expect(screen.queryByTestId("temporary-password")).not.toBeInTheDocument();
+  });
+
+  it("owner: the reset panel says how long the temporary password works", async () => {
+    const { user } = renderShop("/settings/staff/m2", routes);
+    await user.click(await screen.findByRole("button", { name: "Reset password" }));
+    await user.click(screen.getByRole("button", { name: "Reset password" }));
+    expect(
+      await screen.findByText("This temporary password works for 72 hours."),
+    ).toBeInTheDocument();
   });
 
   it("owner looking at themselves: no role, switch-off or reset controls", async () => {

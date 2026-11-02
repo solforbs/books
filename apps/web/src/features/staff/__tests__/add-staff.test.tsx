@@ -18,7 +18,7 @@ const juma = makeMember({
 });
 const TEMP = "Tmp-Kiosk-4821";
 
-function routes(temporaryPassword: string | null) {
+function routes(temporaryPassword: string) {
   return {
     "GET /locations": { body: { locations: [shop1, shop2] } },
     "GET /staff": { body: { members: [owner] } },
@@ -49,6 +49,7 @@ describe("Settings -> Staff -> Add", () => {
 
     expect(await screen.findByTestId("temporary-password")).toHaveTextContent(TEMP);
     expect(screen.getByText(/must choose their own password/)).toBeInTheDocument();
+    expect(screen.getByText("This temporary password works for 72 hours.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy password" })).toBeInTheDocument();
     const post = calls.find((c) => c.method === "POST" && c.path === "/staff");
     expect(post?.body).toMatchObject({
@@ -77,11 +78,52 @@ describe("Settings -> Staff -> Add", () => {
     expect(cached).not.toContain(TEMP);
   });
 
-  it("tells the owner that an existing user keeps their own password", async () => {
-    const { user } = renderShop("/settings/staff/new", routes(null));
+  it("refuses a phone or email that already has a Books account, next to the field", async () => {
+    const { user } = renderShop("/settings/staff/new", {
+      ...routes(TEMP),
+      "POST /staff": apiError(409, "account_exists"),
+    });
     await fillAndSave(user);
-    expect(await screen.findByText(/Juma Otieno already has a Books account/)).toBeInTheDocument();
+    const message = await screen.findByText(/already has a Books account/);
+    expect(message).toHaveTextContent(
+      "This phone or email already has a Books account. Adding people who already use Books will come later.",
+    );
+    // Shown on the phone field (not as a general form error) and linked to it.
+    const phone = screen.getByLabelText("Phone number");
+    expect(phone).toHaveAttribute("aria-invalid", "true");
+    expect(phone.getAttribute("aria-describedby")).toContain(message.id);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByTestId("temporary-password")).not.toBeInTheDocument();
+
+    // Changing the number clears the message.
+    await user.type(phone, "1");
+    expect(screen.queryByText(/already has a Books account/)).not.toBeInTheDocument();
+  });
+
+  it("shows the message on the email field when only an email was given", async () => {
+    const { user } = renderShop("/settings/staff/new", {
+      ...routes(TEMP),
+      "POST /staff": apiError(409, "account_exists"),
+    });
+    await user.type(await screen.findByLabelText("Name"), "Juma Otieno");
+    await user.type(screen.getByLabelText("Email"), "juma@example.com");
+    await user.click(screen.getByRole("checkbox", { name: "Shop 1" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText(/already has a Books account/);
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Phone number")).toHaveAttribute("aria-invalid", "false");
+  });
+
+  it("asks to wait a minute when there were too many tries", async () => {
+    const { user } = renderShop("/settings/staff/new", {
+      ...routes(TEMP),
+      "POST /staff": apiError(429, "too_many_requests"),
+    });
+    await fillAndSave(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Too many tries. Please wait a minute and try again.",
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it("needs a location for staff who are not owners", async () => {
