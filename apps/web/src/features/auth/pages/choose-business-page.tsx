@@ -25,6 +25,18 @@ export function ChooseBusinessPage() {
     if (only && isIdle) mutate({ tenantId: only });
   }, [only, isIdle, mutate]);
 
+  // Switched off everywhere (F02): nothing to choose, so say why instead of an empty list.
+  if (memberships.length === 0) {
+    return (
+      <AppShell actions={<LogoutButton />}>
+        <Card>
+          <CardTitle>{t("business.noneTitle")}</CardTitle>
+          <CardDescription>{t("business.none")}</CardDescription>
+        </Card>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell actions={<LogoutButton />}>
       <Card>

@@ -97,6 +97,10 @@ export const so: Translations = {
     title: "Dooro ganacsiga",
     intro: "Waxaad ka shaqeysaa in ka badan hal ganacsi. Kee hadda?",
     selecting: "Waa la furayaa…",
+    // TODO(translate-review)
+    noneTitle: "Ganacsi firfircoon ma jiro",
+    // TODO(translate-review)
+    none: "Akoonkaagu hadda kama shaqeynayo ganacsi kasta. Weydii milkiilaha dukaanka inuu dib kuu shido, kadibna mar kale gal.",
   },
   role: {
     owner: "Milkiile",

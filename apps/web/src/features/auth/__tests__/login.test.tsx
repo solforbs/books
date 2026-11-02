@@ -24,6 +24,19 @@ async function logIn(user: ReturnType<typeof renderApp>["user"], identifier: str
 }
 
 describe("login", () => {
+  it("tells a person switched off everywhere why, instead of an empty business list", async () => {
+    mockFetch({
+      ...LOGGED_OUT,
+      "POST /auth/login": { body: makeSession({ activeTenantId: null, memberships: [] }) },
+    });
+    const { user } = renderApp("/login");
+    await logIn(user, "0722 111 222");
+
+    expect(await screen.findByText("No active business")).toBeInTheDocument();
+    expect(screen.getByText(/Ask the shop owner to switch you back on/)).toBeInTheDocument();
+    expect(screen.queryByText("Choose business")).not.toBeInTheDocument();
+  });
+
   it("lets a person in several businesses choose one, then opens it", async () => {
     const { calls } = mockFetch({
       ...LOGGED_OUT,

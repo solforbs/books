@@ -81,6 +81,8 @@ export const en = {
     title: "Choose business",
     intro: "You work in more than one business. Which one now?",
     selecting: "Opening…",
+    noneTitle: "No active business",
+    none: "Your account is not active in any business right now. Ask the shop owner to switch you back on, then log in again.",
   },
   role: {
     owner: "Owner",
