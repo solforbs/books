@@ -50,12 +50,12 @@ describe("tenant access is checked against the database (M3)", () => {
     await setMembership(userId, tenantId, { role: "cashier" });
     const res = await guard({ userId, tenantId, role: "owner", sessionId: "s" });
     expect(res.ok).toBe(true);
-    expect(res.req.tenantAccess).toEqual({ tenantId, role: "cashier" });
+    expect(res.req.tenantAccess).toMatchObject({ tenantId, role: "cashier", userId });
   });
 
   it("rejects a disabled membership with not_a_member, even with a valid token", async () => {
     const { userId, tenantId } = await owner();
-    await setMembership(userId, tenantId, { status: "disabled" });
+    await setMembership(userId, tenantId, { status: "switched_off" });
     const res = await guard({ userId, tenantId, role: "owner", sessionId: "s" });
     expect(res).toMatchObject({ ok: false, code: "not_a_member" });
   });
@@ -78,7 +78,7 @@ describe("tenant access is checked against the database (M3)", () => {
     const access = t.app.get(TenantAccess);
     const now = Date.now();
     expect(await access.roleOf(userId, tenantId, now)).toBe("owner");
-    await setMembership(userId, tenantId, { status: "disabled" });
+    await setMembership(userId, tenantId, { status: "switched_off" });
     expect(await access.roleOf(userId, tenantId, now + 1)).toBe("owner");
     expect(await access.roleOf(userId, tenantId, now + TENANT_ACCESS_CACHE_MS + 1)).toBeNull();
   });

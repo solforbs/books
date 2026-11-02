@@ -1,7 +1,7 @@
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { CLIENT_HEADER, CLIENT_HEADER_VALUE } from "@books/shared";
 
-type Method = "GET" | "POST";
+type Method = "GET" | "POST" | "PUT" | "PATCH";
 
 export interface SetCookie {
   name: string;
@@ -42,6 +42,14 @@ export class TestClient {
 
   post(url: string, body?: unknown, opts: RequestOptions = {}): Promise<TestResponse> {
     return this.request("POST", url, { ...opts, body });
+  }
+
+  put(url: string, body?: unknown, opts: RequestOptions = {}): Promise<TestResponse> {
+    return this.request("PUT", url, { ...opts, body });
+  }
+
+  patch(url: string, body?: unknown, opts: RequestOptions = {}): Promise<TestResponse> {
+    return this.request("PATCH", url, { ...opts, body });
   }
 
   async request(method: Method, url: string, opts: RequestOptions = {}): Promise<TestResponse> {

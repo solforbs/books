@@ -1,4 +1,4 @@
-import { check, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { check, index, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { idColumn, oneOf, timestampTz } from "../../../common/database/columns";
 
 export const AUDIT_OUTCOMES = ["success", "failure"] as const;
@@ -19,7 +19,12 @@ export const auditLog = pgTable(
     action: text("action").notNull(),
     outcome: text("outcome").$type<(typeof AUDIT_OUTCOMES)[number]>().notNull(),
     tenantId: uuid("tenant_id"),
+    /** Who did it (for logins: the person logging in). */
     userId: uuid("user_id"),
+    /** What it was done to (a location, money place, membership, ...), when not the actor. */
+    targetId: uuid("target_id"),
+    /** Short before/after summary. Never secrets; phones masked (AuditService). */
+    details: jsonb("details").$type<Record<string, unknown>>(),
     identifierMasked: text("identifier_masked"),
     reason: text("reason"),
     ip: text("ip"),

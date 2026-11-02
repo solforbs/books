@@ -18,6 +18,15 @@ export interface TestApp {
   db: NodePgDatabase;
   /** Raw SQL as the table owner; returns the rows. */
   sql: <R = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<R[]>;
+  /**
+   * Raw SQL as the table owner inside one business: row-level security is FORCEd,
+   * so even the owner sees tenant-owned rows only with `app.tenant_id` set.
+   */
+  tenantSql: <R = Record<string, unknown>>(
+    tenantId: string,
+    text: string,
+    params?: unknown[],
+  ) => Promise<R[]>;
   database: string;
   close: () => Promise<void>;
 }
@@ -54,6 +63,21 @@ export async function createTestApp(env: Record<string, string> = {}): Promise<T
     app,
     db: drizzle(ownerPool),
     sql: async (text, params) => (await ownerPool.query(text, params)).rows,
+    tenantSql: async (tenantId, text, params) => {
+      const client = await ownerPool.connect();
+      try {
+        await client.query("begin");
+        await client.query("select set_config('app.tenant_id', $1, true)", [tenantId]);
+        const { rows } = await client.query(text, params);
+        await client.query("commit");
+        return rows;
+      } catch (err) {
+        await client.query("rollback");
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
     database,
     close: async () => {
       await app.close();

@@ -1,4 +1,4 @@
-import type { Role } from "@books/shared";
+import type { PermissionOverrides, Role } from "@books/shared";
 
 /** Claims inside the 15-minute access JWT. */
 export interface AccessTokenClaims {
@@ -26,7 +26,18 @@ export interface AuthContext {
 /** Set by RequireTenantGuard after checking the active membership in the database. */
 export interface TenantAccessContext {
   tenantId: string;
+  userId: string;
+  membershipId: string;
   role: Role;
+  /** Per-person switches; combine with the role via `effectivePermissions`. */
+  permissionOverrides: PermissionOverrides;
+  /** Assigned open locations (empty for owners, who see every location). */
+  locationIds: string[];
+}
+
+/** Owners see and act on every location; everyone else only on their assigned ones. */
+export function seesAllLocations(access: Pick<TenantAccessContext, "role">): boolean {
+  return access.role === "owner";
 }
 
 declare module "fastify" {

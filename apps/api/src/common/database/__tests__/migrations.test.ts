@@ -33,7 +33,11 @@ describe("migrations (apps/api/drizzle)", () => {
     );
     expect(tables.rows.map((r) => r.tablename)).toEqual([
       "audit_log",
+      "locations",
+      "membership_locations",
       "memberships",
+      "money_place_locations",
+      "money_places",
       "recovery_codes",
       "refresh_sessions",
       "tenants",
@@ -63,7 +67,11 @@ describe("migrations (apps/api/drizzle)", () => {
         ])
       ).rows[0].ok as boolean;
 
-    for (const table of ["users", "tenants", "memberships", "refresh_sessions", "recovery_codes"]) {
+    const tables = [
+      ...["users", "tenants", "memberships", "refresh_sessions", "recovery_codes"],
+      ...["locations", "money_places", "money_place_locations", "membership_locations"],
+    ];
+    for (const table of tables) {
       for (const p of ["SELECT", "INSERT", "UPDATE"])
         expect(await can(table, p), `${table} ${p}`).toBe(true);
       expect(await can(table, "DELETE"), `${table} DELETE`).toBe(false);

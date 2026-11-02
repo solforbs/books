@@ -15,6 +15,13 @@
       "when": 1793517681963,
       "tag": "0001_app_role_grants_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793605536732,
+      "tag": "0002_locations_staff_business",
+      "breakpoints": true
     }
   ]
 }

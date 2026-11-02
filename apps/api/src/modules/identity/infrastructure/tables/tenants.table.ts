@@ -1,4 +1,4 @@
-import { check, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import {
   createdAtColumn,
   idColumn,
@@ -9,7 +9,12 @@ import { users } from "./users.table";
 
 export const TENANT_STATUSES = ["active", "disabled"] as const;
 
-/** A business. Its `id` is the `tenant_id` stamped on every tenant-owned row. */
+/**
+ * A business. Its `id` is the `tenant_id` stamped on every tenant-owned row.
+ * The details below are printed on receipts and other documents (F02 "Business
+ * details for documents"); all optional except the name. KRA PIN optional and
+ * VAT off by default (G3).
+ */
 export const tenants = pgTable(
   "tenants",
   {
@@ -19,6 +24,13 @@ export const tenants = pgTable(
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
+    address: text("address"),
+    /** E.164, normalised by @books/shared. */
+    phone: text("phone"),
+    email: text("email"),
+    kraPin: text("kra_pin"),
+    footerNote: text("footer_note"),
+    vatEnabled: boolean("vat_enabled").notNull().default(false),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
   },

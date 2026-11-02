@@ -78,7 +78,7 @@ describe("multi-business users and POST /auth/select-business", () => {
   it("refuses a disabled membership", async () => {
     const { client } = await loginMulti();
     const managerAtB = and(eq(memberships.tenantId, shopB), eq(memberships.role, "manager"));
-    await t.db.update(memberships).set({ status: "disabled" }).where(managerAtB);
+    await t.db.update(memberships).set({ status: "switched_off" }).where(managerAtB);
     try {
       const res = await client.post("/auth/select-business", { tenantId: shopB });
       expect(res.json().error.code).toBe("not_a_member");

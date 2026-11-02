@@ -101,6 +101,32 @@ export class UsersRepository {
       .where(eq(users.id, id));
   }
 
+  /** Matches by phone or email; two different people can match (one each). */
+  async findByPhoneOrEmail(phone?: string, email?: string): Promise<UserRow[]> {
+    const matches = [
+      ...(phone ? [eq(users.phone, phone)] : []),
+      ...(email ? [eq(users.email, email)] : []),
+    ];
+    if (matches.length === 0) return [];
+    return this.db
+      .select()
+      .from(users)
+      .where(or(...matches))
+      .limit(2);
+  }
+
+  async setName(id: string, name: string, tx: Executor = this.db): Promise<void> {
+    await tx.update(users).set({ name }).where(eq(users.id, id));
+  }
+
+  /** A temporary password set by an owner/manager: must be changed at the next login. */
+  async setTemporaryPassword(id: string, passwordHash: string, tx: Executor = this.db) {
+    await tx
+      .update(users)
+      .set({ passwordHash, mustChangePassword: true, failedLoginCount: 0, lockedUntil: null })
+      .where(eq(users.id, id));
+  }
+
   /** New password also clears the must-change flag and any lockout. */
   async setPassword(id: string, passwordHash: string, tx: Executor = this.db): Promise<void> {
     await tx

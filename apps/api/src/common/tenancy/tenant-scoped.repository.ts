@@ -15,11 +15,17 @@ import { assertTenantId, type TenantDb, type TenantTx } from "./tenant-db";
 /** Every tenant-owned table has a uuid `id` and the business it belongs to. */
 export type TenantTable = PgTable & { id: AnyPgColumn; tenantId: AnyPgColumn };
 /** Insert shape without `tenantId`: the repository stamps it. */
-export type TenantInsert<T extends TenantTable> = Omit<InferInsertModel<T>, "tenantId">;
+// Key remapping instead of Omit: Omit over Drizzle's insert model drops its optional
+// columns (those with defaults or nullable), which then could not be set at all.
+export type TenantInsert<T extends TenantTable> = {
+  [K in keyof InferInsertModel<T> as K extends "tenantId" ? never : K]: InferInsertModel<T>[K];
+};
 /** Update shape: neither `id` nor `tenantId` can be set. */
-export type TenantUpdate<T extends TenantTable> = Partial<
-  Omit<InferInsertModel<T>, "tenantId" | "id">
->;
+export type TenantUpdate<T extends TenantTable> = {
+  [
+    K in keyof InferInsertModel<T> as K extends "tenantId" | "id" ? never : K
+  ]?: InferInsertModel<T>[K];
+};
 
 export interface FindOptions {
   orderBy?: SQL[];
@@ -153,6 +159,18 @@ export abstract class TenantScopedRepository<T extends TenantTable> {
       },
       within,
     );
+  }
+
+  /** Updates one row by id; returns the number of rows changed (0 or 1). */
+  async updateById(
+    tenantId: string,
+    id: string,
+    set: TenantUpdate<T>,
+    within?: TenantTx,
+  ): Promise<number> {
+    assertTenantId(tenantId);
+    if (!isUuid(id)) return 0;
+    return this.update(tenantId, eq(this.table.id, id), set, within);
   }
 }
 
