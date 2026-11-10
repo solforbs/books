@@ -203,6 +203,17 @@ export const so: Translations = {
     barcode_in_use: "Barcode-kan horay ayuu u lahaa alaab kale.",
     similar_products: "Alaab la mid ah horay ayay u jirtay. Fadlan eeg liiska.",
     // TODO(translate-review)
+    pack_not_found: "Cabbirkan baako lama helin.",
+    // TODO(translate-review)
+    barcode_not_found: "Barcode-kan lama helin.",
+    // TODO(translate-review)
+    pack_exists: "Alaabtan horay ayay u lahayd cabbir baako leh magacan.",
+    // TODO(translate-review)
+    product_closed:
+      "Alaabtan horay ayaa loo biiriyey ama loo diiday, sidaa darteed lama beddeli karo.",
+    // TODO(translate-review)
+    price_required: "Geli qiimaha iibka.",
+    // TODO(translate-review)
     packs_not_allowed:
       "Telefoonnada iyo alaabta kale ee leh IMEI ama lambar taxane ma yeelan karaan cabbirro xirmo. Mid kasta si gaar ah ayaa loo iskaan gareeyaa.",
     // TODO(translate-review)
