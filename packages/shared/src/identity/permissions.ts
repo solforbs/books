@@ -12,6 +12,8 @@ export const PERMISSIONS = [
   // Changing roles, permission switches, or switching people off is owner-only, always.
   "add_staff",
   "approve_items", // approve products/suppliers added by non-approvers (F01, F03)
+  "add_products", // add products; non-approvers' products wait for approval (F01 §8)
+  "manage_products", // edit, hide, retire barcodes/packs, manage categories (F01 §11)
   "set_prices", // change selling and minimum prices
   "see_cost_profit", // see buying costs and profit
   "sell", // sell and take payments (F06)
@@ -32,6 +34,8 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   manager: new Set<Permission>([
     "manage_locations",
     "approve_items",
+    "add_products",
+    "manage_products",
     "set_prices",
     "sell",
     "give_discounts",
@@ -41,8 +45,14 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "close_day",
     "view_reports",
   ]),
-  cashier: new Set<Permission>(["sell", "give_discounts", "receive_stock", "record_expenses"]),
-  storekeeper: new Set<Permission>(["receive_stock"]),
+  cashier: new Set<Permission>([
+    "add_products",
+    "sell",
+    "give_discounts",
+    "receive_stock",
+    "record_expenses",
+  ]),
+  storekeeper: new Set<Permission>(["add_products", "receive_stock"]),
   accountant: new Set<Permission>(["see_cost_profit", "view_reports"]),
 };
 
