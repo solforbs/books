@@ -21,3 +21,14 @@ export function pgErrorCode(err: unknown): string | undefined {
 }
 
 export const isUniqueViolation = (err: unknown) => pgErrorCode(err) === PG_UNIQUE_VIOLATION;
+
+/** The constraint a database error names (unique, foreign key, check), if any. */
+export function pgConstraint(err: unknown): string | undefined {
+  let current: unknown = err;
+  for (let depth = 0; depth < 4 && current && typeof current === "object"; depth++) {
+    const constraint = (current as { constraint?: unknown }).constraint;
+    if (typeof constraint === "string") return constraint;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}

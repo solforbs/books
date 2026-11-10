@@ -1,3 +1,5 @@
+import { enSettings } from "./en-settings";
+
 /** English UI text. Every key here must also exist in `so.ts` (checked by a test and by types). */
 export const en = {
   app: {
@@ -19,6 +21,12 @@ export const en = {
     hidePassword: "Hide password",
     working: "Please wait…",
     retry: "Try again",
+    cancel: "Cancel",
+    save: "Save",
+    saved: "Saved",
+    edit: "Edit",
+    more: "More",
+    done: "Done",
   },
   login: {
     title: "Log in",
@@ -73,6 +81,8 @@ export const en = {
     title: "Choose business",
     intro: "You work in more than one business. Which one now?",
     selecting: "Opening…",
+    noneTitle: "No active business",
+    none: "Your account is not active in any business right now. Ask the shop owner to switch you back on, then log in again.",
   },
   role: {
     owner: "Owner",
@@ -100,6 +110,7 @@ export const en = {
   home: {
     greeting: "Hello, {{name}}",
     business: "Business: {{name}}",
+    location: "Location: {{name}}",
     placeholder: "Your dashboard is coming soon.",
   },
   install: {
@@ -122,9 +133,29 @@ export const en = {
     not_a_member: "You are not part of this business.",
     invalid_recovery_code: "This recovery code is not correct or was already used.",
     csrf_header_missing: "Something went wrong. Please reload the page.",
+    password_change_required: "Please choose your own password first.",
+    temporary_password_expired:
+      "This temporary password has expired. Ask the shop owner to reset your password.",
     network_error: "No connection to the server. Check your internet and try again.",
     invalid_response: "The server sent an unexpected answer. Please try again.",
     refresh_in_progress: "Your session is being updated in another window. Please try again.",
+    location_not_found: "This location was not found. It may have been closed.",
+    location_not_empty: "This location still has stock or cash. Move them first.",
+    location_closed: "This location is closed.",
+    last_location: "A business needs at least one open location.",
+    money_place_not_found: "This money place was not found.",
+    money_place_not_empty: "This money place still has money in it. Move the money first.",
+    invalid_settles_to: "Choose one of your bank accounts.",
+    forbidden: "You are not allowed to do this. Ask the owner.",
+    member_of_other_business:
+      "This person also works in another business on Books, so you cannot change this for them.",
+    account_exists:
+      "This phone or email already has a Books account. Adding people who already use Books will come later.",
+    already_member: "This person already works in your business.",
+    last_owner: "There must always be at least one owner. Add another owner first.",
+    cannot_change_self: "You cannot change your own role or switch yourself off.",
+    location_required: "Choose at least one location.",
+    member_not_found: "This staff member was not found.",
     unknown: "Something went wrong. Please try again.",
   },
   validation: {
@@ -135,5 +166,8 @@ export const en = {
     name_too_short: "Enter at least 2 letters.",
     required: "This is needed.",
     check_field: "Please check this.",
+    invalid_kra_pin: "A KRA PIN is one letter, 9 numbers and one letter, like A123456789B.",
+    location_required: "Choose at least one location.",
   },
+  ...enSettings,
 } as const;

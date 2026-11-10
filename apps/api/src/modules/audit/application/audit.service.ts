@@ -14,6 +14,32 @@ export interface AuditEvent {
   reason?: string;
   ip?: string;
   userAgent?: string;
+  /** What the action was done to (location, money place, membership, ...). */
+  targetId?: string | null;
+  /** Before/after summary. `phone` / `email` values are masked before storage. */
+  details?: Record<string, unknown>;
+}
+
+export interface LoginHistoryEntry {
+  at: Date;
+  outcome: "success" | "failure";
+  reason: string | null;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+const MASKED_KEYS = new Set(["phone", "email"]);
+
+/** Masks phone numbers and emails anywhere in a details object (house rule 10). */
+export function maskDetails(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskDetails);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([k, v]) => [
+      k,
+      MASKED_KEYS.has(k) && typeof v === "string" ? maskIdentifier(v) : maskDetails(v),
+    ]),
+  );
 }
 
 /** Public interface of the audit module. Other modules call this, never the table. */
@@ -35,9 +61,21 @@ export class AuditService {
         reason: event.reason ?? null,
         ip: event.ip ?? null,
         userAgent: event.userAgent ?? null,
+        targetId: isUuid(event.targetId) ? event.targetId : null,
+        details: event.details ? (maskDetails(event.details) as Record<string, unknown>) : null,
       });
     } catch (err) {
       this.logger.error(`audit write failed for ${event.action}: ${safeErrorMessage(err)}`);
     }
+  }
+
+  /**
+   * A person's login attempts, newest first (F02 §6 login history). Only entries
+   * tied to this business (S1a review #5): logins and business selections into
+   * it, and failed attempts of people who belong to this business only. An owner
+   * never sees the person's activity in other businesses.
+   */
+  loginHistory(userId: string, tenantId: string, limit = 100): Promise<LoginHistoryEntry[]> {
+    return this.repo.loginHistory(userId, tenantId, limit);
   }
 }

@@ -1,4 +1,13 @@
-import { AUTH_ERROR_CODES, LANGUAGES, ROLES, type PasswordProblem } from "@books/shared";
+import {
+  AUTH_ERROR_CODES,
+  LANGUAGES,
+  LOCATION_ERROR_CODES,
+  MONEY_PLACE_TYPES,
+  PERMISSIONS,
+  ROLES,
+  STAFF_ERROR_CODES,
+  type PasswordProblem,
+} from "@books/shared";
 import { describe, expect, it } from "vitest";
 import { CLIENT_ERROR_CODES } from "@/lib/api";
 import { en } from "../en";
@@ -35,10 +44,15 @@ describe("translations", () => {
     }
   });
 
-  it("translates every API error code, password problem, role and language", () => {
+  it("translates every API error code, password problem, role, language and permission", () => {
     const problems: PasswordProblem[] = ["too_short", "too_long", "too_simple", "too_common"];
     const required = [
       ...AUTH_ERROR_CODES.map((c) => `errors.${c}`),
+      ...LOCATION_ERROR_CODES.map((c) => `errors.${c}`),
+      ...STAFF_ERROR_CODES.map((c) => `errors.${c}`),
+      ...PERMISSIONS.map((p) => `permission.${p}`),
+      ...MONEY_PLACE_TYPES.map((m) => `moneyPlaces.types.${m}`),
+      ...ROLES.map((r) => `staff.roleHint.${r}`),
       ...CLIENT_ERROR_CODES.map((c) => `errors.${c}`),
       ...problems.map((p) => `passwordProblem.${p}`),
       ...ROLES.map((r) => `role.${r}`),

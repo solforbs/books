@@ -32,4 +32,21 @@ export class IdentityService {
       reason,
     });
   }
+
+  /**
+   * Signs a user out of ONE business (switched off there, S1a review #2): only
+   * the sessions working in that business end; the person stays signed in to
+   * their other businesses. Their cached access is dropped either way.
+   */
+  async revokeSessionsInBusiness(userId: string, tenantId: string, reason: string): Promise<void> {
+    await this.sessions.revokeForUserInTenant(userId, tenantId);
+    this.access.forgetUser(userId);
+    await this.audit.record({
+      action: "sessions_revoked",
+      outcome: "success",
+      userId,
+      tenantId,
+      reason,
+    });
+  }
 }

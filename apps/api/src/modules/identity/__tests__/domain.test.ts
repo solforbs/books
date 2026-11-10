@@ -50,8 +50,17 @@ describe("identity domain rules", () => {
 describe("RequireTenantGuard", () => {
   // The database says: user "u" is a cashier in "t" and nothing else.
   const access = {
-    roleOf: async (userId: string, tenantId: string) =>
-      userId === "u" && tenantId === "t" ? "cashier" : null,
+    accessOf: async (userId: string, tenantId: string) =>
+      userId === "u" && tenantId === "t"
+        ? {
+            tenantId,
+            userId,
+            membershipId: "m",
+            role: "cashier",
+            permissionOverrides: {},
+            locationIds: ["l"],
+          }
+        : null,
   } as unknown as TenantAccess;
   const guard = new RequireTenantGuard(access);
   const run = async (auth?: Partial<AuthContext>) => {
@@ -68,7 +77,11 @@ describe("RequireTenantGuard", () => {
     const res = await run({ userId: "u", tenantId: "t", role: "owner", sessionId: "s" });
     expect(res.ok).toBe(true);
     expect(res.req.auth?.role).toBe("cashier");
-    expect(res.req.tenantAccess).toEqual({ tenantId: "t", role: "cashier" });
+    expect(res.req.tenantAccess).toMatchObject({
+      tenantId: "t",
+      role: "cashier",
+      locationIds: ["l"],
+    });
   });
 
   it("returns not_a_member when the database has no active membership", async () => {

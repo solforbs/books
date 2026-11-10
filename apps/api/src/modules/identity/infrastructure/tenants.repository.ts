@@ -4,6 +4,11 @@ import { DB, type Database, type Executor } from "../../../common/database/datab
 import { isUuid } from "../../../common/database/uuid";
 import { tenants, type TenantRow } from "./tables/tenants.table";
 
+export type TenantDetails = Pick<
+  TenantRow,
+  "name" | "address" | "phone" | "email" | "kraPin" | "footerNote" | "vatEnabled"
+>;
+
 @Injectable()
 export class TenantsRepository {
   constructor(@Inject(DB) private readonly db: Database) {}
@@ -21,5 +26,16 @@ export class TenantsRepository {
       .select()
       .from(tenants)
       .where(and(inArray(tenants.id, valid), eq(tenants.status, "active")));
+  }
+
+  async findById(id: string): Promise<TenantRow | null> {
+    if (!isUuid(id)) return null;
+    const [row] = await this.db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
+    return row ?? null;
+  }
+
+  async updateDetails(id: string, details: Partial<TenantDetails>): Promise<TenantRow | null> {
+    const [row] = await this.db.update(tenants).set(details).where(eq(tenants.id, id)).returning();
+    return row ?? null;
   }
 }

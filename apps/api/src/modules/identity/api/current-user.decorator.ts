@@ -1,6 +1,8 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import type { Role } from "@books/shared";
 import type { FastifyRequest } from "fastify";
+import { requestMetaOf } from "../../../common/security/request-meta";
+import type { Actor } from "../domain/actor";
 import type { AuthContext, TenantAccessContext } from "../domain/auth-context";
 import { IdentityErrors } from "../domain/identity-errors";
 
@@ -28,7 +30,18 @@ export const CurrentTenant = createParamDecorator(
   (_: unknown, ctx: ExecutionContext): string => verifiedAccess(ctx).tenantId,
 );
 
+/** The caller's verified membership: role, switches and locations (from the database). */
+export const CurrentAccess = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): TenantAccessContext => verifiedAccess(ctx),
+);
+
 /** The caller's role in the active business, read from the database (never the token). */
 export const CurrentRole = createParamDecorator(
   (_: unknown, ctx: ExecutionContext): Role => verifiedAccess(ctx).role,
 );
+
+/** The verified membership plus request metadata, for audited use cases. */
+export const CurrentActor = createParamDecorator((_: unknown, ctx: ExecutionContext): Actor => ({
+  access: verifiedAccess(ctx),
+  meta: requestMetaOf(ctx.switchToHttp().getRequest<FastifyRequest>()),
+}));

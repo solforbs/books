@@ -5,12 +5,18 @@ import { IS_PUBLIC_KEY } from "../../../common/security/public.decorator";
 import { IdentityErrors } from "../domain/identity-errors";
 import { RefreshSessionsRepository } from "../infrastructure/refresh-sessions.repository";
 import { TokenService } from "../infrastructure/token-service";
+import { ALLOW_PENDING_PASSWORD_CHANGE_KEY } from "./allow-pending-password-change";
 import { AuthCookies } from "./auth-cookies";
 
 /**
  * Global guard: every route needs a valid access cookie unless marked
  * `@Public()`. The session behind the token must still be active, so logout,
  * password change and token-theft detection cut access immediately.
+ *
+ * While the person still has to change a temporary password, only routes marked
+ * `@AllowPendingPasswordChange()` work; everything else is 403
+ * `password_change_required` (S1a review #6). Read from the database on every
+ * request, so changing the password unlocks the same session at once.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -22,11 +28,8 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
+    const targets = [context.getHandler(), context.getClass()];
+    if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets)) return true;
 
     const req = context.switchToHttp().getRequest<FastifyRequest>();
     const token = this.cookies.readAccess(req);
@@ -39,8 +42,13 @@ export class AuthGuard implements CanActivate {
         : IdentityErrors.notAuthenticated();
     }
     const { claims } = verified;
-    if (!(await this.sessions.isFamilyActive(claims.sid, new Date()))) {
-      throw IdentityErrors.sessionExpired();
+    const session = await this.sessions.activeSessionState(claims.sid, new Date());
+    if (!session) throw IdentityErrors.sessionExpired();
+    if (
+      session.mustChangePassword &&
+      !this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_PASSWORD_CHANGE_KEY, targets)
+    ) {
+      throw IdentityErrors.passwordChangeRequired();
     }
     req.auth = {
       userId: claims.sub,

@@ -52,9 +52,25 @@ export class UsersRepository {
   async create(user: NewUser, tx: Executor): Promise<UserRow> {
     const [created] = await tx
       .insert(users)
-      .values({ ...user, phone: user.phone ?? null, email: user.email ?? null })
+      .values({
+        ...user,
+        phone: user.phone ?? null,
+        email: user.email ?? null,
+        // A must-change password is a temporary one: its 72 hours start now.
+        temporaryPasswordIssuedAt: user.mustChangePassword ? new Date() : null,
+      })
       .returning();
     return created!;
+  }
+
+  /**
+   * Locks the user row until the transaction ends. Adding a membership needs a
+   * key-share lock on it (foreign key), so this also holds off new memberships.
+   */
+  async lockById(id: string, tx: Executor): Promise<UserRow | null> {
+    if (!isUuid(id)) return null;
+    const [row] = await tx.select().from(users).where(eq(users.id, id)).for("update");
+    return row ?? null;
   }
 
   /**
@@ -101,11 +117,35 @@ export class UsersRepository {
       .where(eq(users.id, id));
   }
 
+  async setName(id: string, name: string, tx: Executor = this.db): Promise<void> {
+    await tx.update(users).set({ name }).where(eq(users.id, id));
+  }
+
+  /** A temporary password set by an owner/manager: must be changed at the next login. */
+  async setTemporaryPassword(id: string, passwordHash: string, tx: Executor = this.db) {
+    await tx
+      .update(users)
+      .set({
+        passwordHash,
+        mustChangePassword: true,
+        temporaryPasswordIssuedAt: new Date(),
+        failedLoginCount: 0,
+        lockedUntil: null,
+      })
+      .where(eq(users.id, id));
+  }
+
   /** New password also clears the must-change flag and any lockout. */
   async setPassword(id: string, passwordHash: string, tx: Executor = this.db): Promise<void> {
     await tx
       .update(users)
-      .set({ passwordHash, mustChangePassword: false, failedLoginCount: 0, lockedUntil: null })
+      .set({
+        passwordHash,
+        mustChangePassword: false,
+        temporaryPasswordIssuedAt: null,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      })
       .where(eq(users.id, id));
   }
 }

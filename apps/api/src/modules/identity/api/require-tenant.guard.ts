@@ -24,17 +24,18 @@ export class RequireTenantGuard implements CanActivate {
     const { userId, tenantId } = req.auth;
     if (!tenantId) throw IdentityErrors.businessNotSelected();
 
-    const role = await this.access.roleOf(userId, tenantId);
-    if (!role) throw IdentityErrors.notAMember();
-    req.auth = { ...req.auth, role };
-    req.tenantAccess = { tenantId, role };
+    const access = await this.access.accessOf(userId, tenantId);
+    if (!access) throw IdentityErrors.notAMember();
+    req.auth = { ...req.auth, role: access.role };
+    req.tenantAccess = access;
     return true;
   }
 }
 
 /**
  * Put on every controller of tenant-owned data (catalog, sales, ...):
- * `@RequireTenant()` then read the id with `@CurrentTenant()` and the
- * verified role with `@CurrentRole()`.
+ * `@RequireTenant()` then read the id with `@CurrentTenant()`, the verified
+ * role with `@CurrentRole()`, or everything with `@CurrentAccess()`.
+ * Routes that need a permission use `@RequirePermission(...)` instead.
  */
 export const RequireTenant = () => applyDecorators(UseGuards(RequireTenantGuard));

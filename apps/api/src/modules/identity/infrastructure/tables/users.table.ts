@@ -24,9 +24,15 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     language: text("language").$type<Language>().notNull().default("en"),
     mustChangePassword: boolean("must_change_password").notNull().default(false),
+    /**
+     * When the current temporary password (add staff, reset) was issued; it stops
+     * working TEMPORARY_PASSWORD_TTL_MS later. Null once the person picked their own.
+     */
+    temporaryPasswordIssuedAt: timestampTz("temporary_password_issued_at"),
     status: text("status").$type<(typeof USER_STATUSES)[number]>().notNull().default("active"),
     failedLoginCount: integer("failed_login_count").notNull().default(0),
     lockedUntil: timestampTz("locked_until"),
+    /** Last login into any business; staff lists use memberships.last_login_at instead. */
     lastLoginAt: timestampTz("last_login_at"),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
