@@ -10,6 +10,7 @@ import { AppConfigModule } from "./config/config.module";
 import { HealthController } from "./health/health.controller";
 import { AuditModule } from "./modules/audit/audit.module";
 import { BusinessModule } from "./modules/business/business.module";
+import { CatalogModule } from "./modules/catalog/catalog.module";
 import { AuthGuard } from "./modules/identity/api/auth.guard";
 import { IdentityModule } from "./modules/identity/identity.module";
 import { LocationsModule } from "./modules/locations/locations.module";
@@ -27,6 +28,7 @@ import { StaffModule } from "./modules/staff/staff.module";
     IdentityModule,
     BusinessModule,
     LocationsModule,
+    CatalogModule,
     StaffModule,
   ],
   controllers: [HealthController],

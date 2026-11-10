@@ -29,6 +29,13 @@
       "when": 1793628338490,
       "tag": "0003_s1a_security_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794324013822,
+      "tag": "0004_catalog_products",
+      "breakpoints": true
     }
   ]
 }

@@ -33,11 +33,18 @@ describe("migrations (apps/api/drizzle)", () => {
     );
     expect(tables.rows.map((r) => r.tablename)).toEqual([
       "audit_log",
+      "barcode_sequences",
       "locations",
       "membership_locations",
       "memberships",
       "money_place_locations",
       "money_places",
+      "product_barcodes",
+      "product_categories",
+      "product_history",
+      "product_location_prices",
+      "product_pack_units",
+      "products",
       "recovery_codes",
       "refresh_sessions",
       "tenants",
@@ -70,12 +77,18 @@ describe("migrations (apps/api/drizzle)", () => {
     const tables = [
       ...["users", "tenants", "memberships", "refresh_sessions", "recovery_codes"],
       ...["locations", "money_places", "money_place_locations", "membership_locations"],
+      ...["product_categories", "products", "product_pack_units", "product_barcodes"],
+      ...["product_location_prices", "barcode_sequences"],
     ];
     for (const table of tables) {
       for (const p of ["SELECT", "INSERT", "UPDATE"])
         expect(await can(table, p), `${table} ${p}`).toBe(true);
       expect(await can(table, "DELETE"), `${table} DELETE`).toBe(false);
     }
+    // Append-only logs: the product history, like the audit log, has no UPDATE and no DELETE.
+    expect(await can("product_history", "INSERT")).toBe(true);
+    expect(await can("product_history", "UPDATE")).toBe(false);
+    expect(await can("product_history", "DELETE")).toBe(false);
     // Append-only audit log.
     expect(await can("audit_log", "INSERT")).toBe(true);
     expect(await can("audit_log", "UPDATE")).toBe(false);

@@ -54,7 +54,7 @@ describe("GET /me/permissions (F02 §4.2, G1)", () => {
     expect(await access(cashier)).toEqual({
       role: "cashier",
       locationIds: [shop.id],
-      permissions: ["see_cost_profit", "sell", "receive_stock", "record_expenses"],
+      permissions: ["add_products", "see_cost_profit", "sell", "receive_stock", "record_expenses"],
       approvalsActive: true,
     });
 
