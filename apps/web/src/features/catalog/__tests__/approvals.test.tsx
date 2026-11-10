@@ -108,6 +108,27 @@ describe("Approvals (G1)", () => {
     });
   });
 
+  it("lets a waiting product be the merge target, like the server (active or waiting)", async () => {
+    const otherWaiting = makeProduct({
+      id: "w2",
+      name: "Oraimo 20W Charger (second)",
+      status: "waiting",
+      categoryId: "c-chargers",
+      trackingType: "quantity",
+    });
+    const { user } = renderShop("/products/waiting", {
+      ...routes,
+      "GET /products": productsPage([existing, otherWaiting, waitingProduct]),
+    });
+    await user.click(await screen.findByRole("button", { name: "Same as an existing product" }));
+    await user.type(screen.getByLabelText("Find the product it is the same as"), "oraimo");
+    expect(
+      await screen.findByRole("button", { name: "Oraimo 20W Charger (second)" }),
+    ).toBeVisible();
+    // The product being merged is never offered as its own target.
+    expect(screen.queryByRole("button", { name: "Oraimo charger 20W" })).not.toBeInTheDocument();
+  });
+
   it("explains when a product cannot be rejected because it is in use", async () => {
     const { user } = renderShop("/products/waiting", {
       ...routes,

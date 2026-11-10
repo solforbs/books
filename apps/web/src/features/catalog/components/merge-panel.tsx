@@ -25,7 +25,10 @@ export function MergePanel({ product, onCancel }: MergePanelProps) {
   const [target, setTarget] = useState<Product | null>(null);
   const merge = useMergeProduct();
   const results = useProductSearch(useDebounced(text.trim()));
-  const choices = (results.data ?? []).filter((p) => p.id !== product.id && p.status === "active");
+  // Same rule as the server: the target is another active or waiting product.
+  const choices = (results.data ?? []).filter(
+    (p) => p.id !== product.id && (p.status === "active" || p.status === "waiting"),
+  );
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border-2 border-slate-300 bg-slate-50 p-4">
