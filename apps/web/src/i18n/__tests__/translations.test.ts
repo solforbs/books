@@ -1,11 +1,17 @@
 import {
   AUTH_ERROR_CODES,
+  BARCODE_KINDS,
+  CATEGORY_ERROR_CODES,
   LANGUAGES,
   LOCATION_ERROR_CODES,
   MONEY_PLACE_TYPES,
+  NAMING_MODES,
   PERMISSIONS,
+  PRODUCT_ERROR_CODES,
   ROLES,
   STAFF_ERROR_CODES,
+  TRACKING_TYPES,
+  VAT_TYPES,
   type PasswordProblem,
 } from "@books/shared";
 import { describe, expect, it } from "vitest";
@@ -55,12 +61,40 @@ describe("translations", () => {
       ...ROLES.map((r) => `staff.roleHint.${r}`),
       ...CLIENT_ERROR_CODES.map((c) => `errors.${c}`),
       ...problems.map((p) => `passwordProblem.${p}`),
+      ...PRODUCT_ERROR_CODES.map((c) => `errors.${c}`),
+      ...CATEGORY_ERROR_CODES.map((c) => `errors.${c}`),
+      ...TRACKING_TYPES.map((v) => `catalog.tracking.${v}`),
+      ...NAMING_MODES.map((v) => `catalog.naming.${v}`),
+      ...VAT_TYPES.map((v) => `catalog.vat.${v}`),
+      ...BARCODE_KINDS.map((v) => `catalog.barcodes.kind.${v}`),
+      ...["waiting", "hidden", "merged", "rejected"].map((v) => `catalog.status.${v}`),
       ...ROLES.map((r) => `role.${r}`),
       ...LANGUAGES.map((l) => `language.${l}`),
     ];
     for (const key of required) {
       expect(enKeys[key], key).toBeTruthy();
       expect(soKeys[key], key).toBeTruthy();
+    }
+  });
+
+  it("has every text key the catalog screens ask for, in both languages", () => {
+    const sources = import.meta.glob<string>("/src/features/catalog/**/*.{ts,tsx}", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    });
+    const used = new Set<string>();
+    for (const [file, text] of Object.entries(sources)) {
+      if (file.includes("__tests__")) continue;
+      for (const match of text.matchAll(/(?<![\w.])t\(\s*["'`]([\w.]+)["'`]/g))
+        used.add(match[1] ?? "");
+    }
+    expect(used.size).toBeGreaterThan(50);
+    for (const key of used) {
+      // Counted texts are stored as key_one / key_other.
+      const known = (keys: Record<string, string>) => key in keys || `${key}_other` in keys;
+      expect(known(enKeys), `en: ${key}`).toBe(true);
+      expect(known(soKeys), `so: ${key}`).toBe(true);
     }
   });
 });

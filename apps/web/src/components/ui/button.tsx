@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg px-5 text-base font-semibold " +
     "transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40 " +
     "disabled:cursor-not-allowed disabled:opacity-60",

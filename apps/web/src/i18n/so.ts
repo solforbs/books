@@ -1,3 +1,4 @@
+import { soCatalog } from "./so-catalog";
 import { soSettings } from "./so-settings";
 import type { Translations } from "./types";
 
@@ -197,6 +198,27 @@ export const so: Translations = {
     cannot_change_self: "Ma beddeli kartid doorkaaga, mana damin kartid naftaada.",
     location_required: "Dooro ugu yaraan hal goob.",
     member_not_found: "Shaqaalahan lama helin.",
+    product_not_found: "Alaabtan lama helin.",
+    duplicate_product: "Alaabtan horay ayay u jirtay.",
+    barcode_in_use: "Barcode-kan horay ayuu u lahaa alaab kale.",
+    similar_products: "Alaab la mid ah horay ayay u jirtay. Fadlan eeg liiska.",
+    // TODO(translate-review)
+    packs_not_allowed:
+      "Telefoonnada iyo alaabta kale ee leh IMEI ama lambar taxane ma yeelan karaan cabbirro xirmo. Mid kasta si gaar ah ayaa loo iskaan gareeyaa.",
+    // TODO(translate-review)
+    product_in_use:
+      "Alaabtan hore ayay u lahayd kayd ama iib, sidaas darteed lama beddeli karo. Samee alaab cusub.",
+    // TODO(translate-review)
+    product_has_stock:
+      "Alaabtan weli kayd ayay leedahay. Marka hore iibi, u wareeji ama hagaaji kaydka, kadibna qari.",
+    invalid_barcode: "Barcode-kan ma sax aha. Hubi lambarka oo isku day mar kale.",
+    not_waiting: "Alaabtan mar dambe ma sugayso oggolaansho.",
+    // TODO(translate-review)
+    invalid_merge_target: "Alaab ma isku dari kartid kan. Dooro alaab kale.",
+    category_exists: "Qayb magacan leh horay ayaad u haysatay.",
+    // TODO(translate-review)
+    category_in_use: "Qaybtan weli alaab ayay leedahay. Marka hore u rar qayb kale.",
+    category_not_found: "Qaybtan lama helin.",
     unknown: "Wax baa khaldamay. Fadlan isku day mar kale.",
   },
   validation: {
@@ -211,6 +233,9 @@ export const so: Translations = {
     // TODO(translate-review)
     invalid_kra_pin: "KRA PIN waa hal xaraf, 9 lambar iyo hal xaraf, sida A123456789B.",
     location_required: "Dooro ugu yaraan hal goob.",
+    // TODO(translate-review)
+    invalid_amount: "Geli lacag sida 1,200 ama 1,200.50.",
   },
   ...soSettings,
+  ...soCatalog,
 };

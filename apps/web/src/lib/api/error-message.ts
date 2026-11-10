@@ -1,10 +1,18 @@
-import { AUTH_ERROR_CODES, LOCATION_ERROR_CODES, STAFF_ERROR_CODES } from "@books/shared";
+import {
+  AUTH_ERROR_CODES,
+  CATEGORY_ERROR_CODES,
+  LOCATION_ERROR_CODES,
+  PRODUCT_ERROR_CODES,
+  STAFF_ERROR_CODES,
+} from "@books/shared";
 import { CLIENT_ERROR_CODES, isApiError, type ApiError } from "./api-error";
 
 const KNOWN_CODES = new Set<string>([
   ...AUTH_ERROR_CODES,
   ...LOCATION_ERROR_CODES,
   ...STAFF_ERROR_CODES,
+  ...PRODUCT_ERROR_CODES,
+  ...CATEGORY_ERROR_CODES,
   ...CLIENT_ERROR_CODES,
 ]);
 
