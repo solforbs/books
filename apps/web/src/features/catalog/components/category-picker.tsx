@@ -70,6 +70,7 @@ export function CategoryPicker({
             {t("catalog.categories.addTitle")}
           </h2>
           <CategoryForm
+            nested
             defaultNaming={partsOnly ? "parts" : "free"}
             onDone={(saved) => {
               setAdding(false);
