@@ -18,6 +18,12 @@ import { LocationsPage } from "@/features/locations/pages/locations-page";
 import { MoneyPlacesPage } from "@/features/locations/pages/money-places-page";
 import { RequireSettingsAccess } from "@/features/settings/components/require-settings-access";
 import { SettingsMenuPage } from "@/features/settings/pages/settings-menu-page";
+import { RequireSuppliersAccess } from "@/features/suppliers/components/require-suppliers-access";
+import { AddSupplierPage } from "@/features/suppliers/pages/add-supplier-page";
+import { EditSupplierPage } from "@/features/suppliers/pages/edit-supplier-page";
+import { SupplierDetailPage } from "@/features/suppliers/pages/supplier-detail-page";
+import { SuppliersPage } from "@/features/suppliers/pages/suppliers-page";
+import { WaitingSuppliersPage } from "@/features/suppliers/pages/waiting-suppliers-page";
 import { MainLayout } from "@/features/shell/components/main-layout";
 import { AddStaffPage } from "@/features/staff/pages/add-staff-page";
 import { StaffDetailPage } from "@/features/staff/pages/staff-detail-page";
@@ -80,6 +86,46 @@ export function AppRoutes() {
         <Route path="products/waiting" element={<WaitingPage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="products/:id/edit" element={<EditProductPage />} />
+        <Route
+          path="suppliers"
+          element={
+            <RequireSuppliersAccess need="read">
+              <SuppliersPage />
+            </RequireSuppliersAccess>
+          }
+        />
+        <Route
+          path="suppliers/new"
+          element={
+            <RequireSuppliersAccess need="manage">
+              <AddSupplierPage />
+            </RequireSuppliersAccess>
+          }
+        />
+        <Route
+          path="suppliers/waiting"
+          element={
+            <RequireSuppliersAccess need="approve">
+              <WaitingSuppliersPage />
+            </RequireSuppliersAccess>
+          }
+        />
+        <Route
+          path="suppliers/:id"
+          element={
+            <RequireSuppliersAccess need="read">
+              <SupplierDetailPage />
+            </RequireSuppliersAccess>
+          }
+        />
+        <Route
+          path="suppliers/:id/edit"
+          element={
+            <RequireSuppliersAccess need="manage">
+              <EditSupplierPage />
+            </RequireSuppliersAccess>
+          }
+        />
         <Route path="settings" element={<SettingsMenuPage />} />
         <Route
           path="settings/business"

@@ -6,10 +6,13 @@ import {
   LOCATION_ERROR_CODES,
   MONEY_PLACE_TYPES,
   NAMING_MODES,
+  PAYMENT_RULE_TYPES,
   PERMISSIONS,
   PRODUCT_ERROR_CODES,
   ROLES,
   STAFF_ERROR_CODES,
+  SUPPLIER_ERROR_CODES,
+  TIME_UNITS,
   TRACKING_TYPES,
   VAT_TYPES,
   type PasswordProblem,
@@ -68,6 +71,14 @@ describe("translations", () => {
       ...VAT_TYPES.map((v) => `catalog.vat.${v}`),
       ...BARCODE_KINDS.map((v) => `catalog.barcodes.kind.${v}`),
       ...["waiting", "hidden", "merged", "rejected"].map((v) => `catalog.status.${v}`),
+      ...SUPPLIER_ERROR_CODES.map((c) => `errors.${c}`),
+      ...PAYMENT_RULE_TYPES.flatMap((r) => [
+        `suppliers.rule.choice.${r}`,
+        `suppliers.rule.short.${r}`,
+        `suppliers.rule.sentence.${r}`,
+      ]),
+      ...TIME_UNITS.flatMap((u) => [`suppliers.unitName.${u}`, `suppliers.units.${u}_other`]),
+      ...["waiting", "hidden"].map((v) => `suppliers.status.${v}`),
       ...ROLES.map((r) => `role.${r}`),
       ...LANGUAGES.map((l) => `language.${l}`),
     ];
@@ -77,8 +88,8 @@ describe("translations", () => {
     }
   });
 
-  it("has every text key the catalog screens ask for, in both languages", () => {
-    const sources = import.meta.glob<string>("/src/features/catalog/**/*.{ts,tsx}", {
+  it("has every text key the catalog and suppliers screens ask for, in both languages", () => {
+    const sources = import.meta.glob<string>("/src/features/{catalog,suppliers}/**/*.{ts,tsx}", {
       query: "?raw",
       import: "default",
       eager: true,

@@ -13,6 +13,7 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     label: "Liiska weyn",
     home: "Bogga hore",
     products: "Alaabta",
+    suppliers: "Alaab-qeybiyeyaal",
     settings: "Dejinta",
   },
   setup: {
@@ -184,6 +185,8 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     add_products: "Ku dar alaab",
     // TODO(translate-review)
     manage_products: "Beddel, qari oo habee alaabta iyo qaybaha",
+    // TODO(translate-review)
+    manage_suppliers: "Ku dar oo beddel alaab-qeybiyeyaal iyo sida aad ugu bixiso",
     set_prices: "Beddel qiimaha",
     see_cost_profit: "Arag kharashka iyo faa'iidada",
     sell: "Iibi oo lacag qaado",
