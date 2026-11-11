@@ -140,7 +140,7 @@ type Source = "form" | "bulk" | "quick_add" | "import";
 export function buildCreateRequest(
   values: ProductFormValues,
   ctx: RequestContext,
-  options: { source?: Source; acknowledgeSimilar?: boolean } = {},
+  options: { source?: Source; acknowledgeSimilar?: boolean; locationId?: string } = {},
 ): BuildResult<CreateProductRequest> {
   const { fields, issues, parts } = collect(values, ctx, ctx.canSetPrices);
   const packs = packUnits(values, ctx, issues);
@@ -153,6 +153,8 @@ export function buildCreateRequest(
     canBeGivenFree: fields.canBeGivenFree,
     acknowledgeSimilar: options.acknowledgeSimilar ?? false,
     source: options.source ?? "form",
+    // The shop the person is working in, recorded in the product history (F01 §8).
+    ...(options.locationId ? { locationId: options.locationId } : {}),
     locationPrices: fields.locationPrices,
     ...(parts ? {} : { name: fields.name }),
     ...(fields.brand ? { brand: fields.brand } : {}),

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { outcomeFromResult, type BulkRowData, type RowOutcome } from "../bulk-rows";
 import type { FormContextData } from "../components/form-api";
 import { emptyValues } from "../product-form-values";
+import { useCurrentLocation } from "@/features/locations/hooks/current-location";
 import { buildCreateRequest } from "../product-request";
 import { useBulkCreate } from "./use-product-mutations";
 
@@ -19,6 +20,7 @@ interface BulkInput {
  */
 export function useBulkSubmit(data: FormContextData) {
   const bulk = useBulkCreate();
+  const { current: currentLocation } = useCurrentLocation();
   const [outcomes, setOutcomes] = useState<Record<string, RowOutcome>>({});
 
   const submit = async (rows: BulkRowData[], input: BulkInput, acknowledgeSimilar: boolean) => {
@@ -37,7 +39,7 @@ export function useBulkSubmit(data: FormContextData) {
           retail: input.prices[row.key] ?? "",
         }),
         { category: input.category, canSetPrices: data.canSetPrices, vatEnabled: data.vatEnabled },
-        { source: "bulk", acknowledgeSimilar },
+        { source: "bulk", acknowledgeSimilar, locationId: currentLocation?.id },
       );
       if (built.ok) {
         items.push(built.request);

@@ -65,6 +65,8 @@ describe("Add a product", () => {
       trackingType: "imei",
       barcodes: ["6901234567892"],
       acknowledgeSimilar: false,
+      // The shop the person is working in is recorded with the product (F01 §8).
+      locationId: "l1",
     });
     expect(post?.body).not.toHaveProperty("name");
   });

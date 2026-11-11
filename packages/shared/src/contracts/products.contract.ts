@@ -108,6 +108,13 @@ export const createProductRequestSchema = z
     acknowledgeSimilar: z.boolean().default(false),
     /** How it was added, for the audit trail (F01 §8). */
     source: z.enum(["form", "bulk", "quick_add", "import"]).default("form"),
+    /**
+     * The shop or store the person was working in (the location switcher). Recorded in the
+     * product's history and audit entry (F01 §8: who, when, where, how). Must be an open
+     * location the person may use (400 `location_not_found` otherwise). The device is
+     * recorded later, with the device features.
+     */
+    locationId: z.string().min(1).optional(),
   })
   .refine((d) => d.name || d.model, { message: "name_required", path: ["name"] });
 export type CreateProductRequest = z.input<typeof createProductRequestSchema>;

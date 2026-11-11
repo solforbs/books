@@ -2,6 +2,7 @@ import type { Category, CreateProductRequest, Product } from "@books/shared";
 import { useCheckProduct, useCreateProduct } from "../hooks/use-product-mutations";
 import { useSaveFlow } from "../hooks/use-save-flow";
 import type { ProductFormValues } from "../product-form-values";
+import { useCurrentLocation } from "@/features/locations/hooks/current-location";
 import { buildCreateRequest } from "../product-request";
 import type { FormContextData } from "./form-api";
 import { ProductFormView } from "./product-form-view";
@@ -24,6 +25,7 @@ export function CreateProductForm({
 }: CreateProductFormProps) {
   const check = useCheckProduct();
   const create = useCreateProduct();
+  const { current: currentLocation } = useCurrentLocation();
   const flow = useSaveFlow<CreateProductRequest>({
     check: check.mutateAsync,
     save: async (request, acknowledge) =>
@@ -41,7 +43,11 @@ export function CreateProductForm({
       save={flow}
       onCancel={onCancel}
       onSubmit={(values, category) => {
-        const built = buildCreateRequest(values, { category, ...data });
+        const built = buildCreateRequest(
+          values,
+          { category, ...data },
+          { locationId: currentLocation?.id },
+        );
         if (!built.ok) return built.issues;
         void flow.submit(built.request);
         return null;

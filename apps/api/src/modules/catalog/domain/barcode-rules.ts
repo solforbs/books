@@ -1,10 +1,15 @@
 import { isValidImei, normalizeBarcode, normalizeForCompare } from "@books/shared";
 
-const BARCODE_SHAPE = /^[0-9A-Za-z]{4,40}$/;
+/**
+ * What real product and shop labels carry (founders, 2026-11-11): EAN-8/13, UPC-A/E and
+ * ITF-14 are 6-14 digits; Code 39 / Code 128 shop labels mix letters, digits and `- . /`
+ * and Code 39 holds at most 43 characters.
+ */
+const BARCODE_SHAPE = /^[0-9A-Za-z./-]{3,43}$/;
 
 export type BarcodeCheck = { ok: true; value: string } | { ok: false; reason: string };
 
-/** Digits and letters only, 4-40 long; a 15-digit IMEI is not a product barcode (F01 §7). */
+/** Letters, digits and `- . /`, 3-43 long; a 15-digit IMEI is not a product barcode (F01 §7). */
 export function checkBarcodeValue(raw: string): BarcodeCheck {
   const value = normalizeBarcode(raw);
   if (!BARCODE_SHAPE.test(value)) return { ok: false, reason: "invalid_characters_or_length" };

@@ -87,6 +87,7 @@ export class CreateProductUseCase {
           name: created.product.name,
           status: created.product.status,
           source: input.source,
+          locationId: input.locationId ?? null,
           barcodes,
         },
         acknowledgedSimilar: created.acknowledged,
@@ -120,9 +121,10 @@ export class CreateProductUseCase {
     const packNames = new Set(input.packUnits.map((p) => p.name.toLowerCase()));
     if (packNames.size !== input.packUnits.length) throw CatalogErrors.packExists();
     const wantedPrices = dedupeLocationPrices(input.locationPrices);
+    // The shop the person is working in is checked like any other location they use.
     await this.locations.assertUsable(
       t.tenantId,
-      wantedPrices.map((p) => p.locationId),
+      [...wantedPrices.map((p) => p.locationId), ...(input.locationId ? [input.locationId] : [])],
       locationScopeOf(access),
       t,
     );
@@ -190,7 +192,15 @@ export class CreateProductUseCase {
       row.id,
       access.userId,
       [
-        { action: "created", after: { name: row.name, status, source: input.source } },
+        {
+          action: "created",
+          after: {
+            name: row.name,
+            status,
+            source: input.source,
+            locationId: input.locationId ?? null,
+          },
+        },
         ...(acknowledged.length > 0
           ? [
               {

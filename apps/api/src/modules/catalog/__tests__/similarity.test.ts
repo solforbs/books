@@ -139,10 +139,24 @@ describe("keys, names and barcodes", () => {
     expect(canonicalCondition("Grade A")).toBe("Grade A");
   });
 
-  it("accepts letters and digits, refuses spaces, short codes and IMEIs", () => {
+  it("accepts real product and shop labels, refuses odd characters, short, long codes and IMEIs", () => {
+    // Scanner spaces are removed; EAN-13, EAN-8, UPC-A and ITF-14 are plain digits.
     expect(checkBarcodeValue(" 6901 2345 67892 ")).toEqual({ ok: true, value: "6901234567892" });
-    expect(checkBarcodeValue("12")).toMatchObject({ ok: false });
-    expect(checkBarcodeValue("69-01")).toMatchObject({ ok: false });
+    for (const label of [
+      "96385074",
+      "036000291452",
+      "10012345678902",
+      "AB-1234",
+      "A12/5",
+      "ab.9",
+    ]) {
+      expect(checkBarcodeValue(label), label).toEqual({ ok: true, value: label });
+    }
+    expect(checkBarcodeValue("69-01")).toEqual({ ok: true, value: "69-01" });
+    expect(checkBarcodeValue("A".repeat(43))).toMatchObject({ ok: true });
+    for (const bad of ["12", "A".repeat(44), "abc!", "a_b-c", "50%off", ""]) {
+      expect(checkBarcodeValue(bad), bad).toMatchObject({ ok: false });
+    }
     expect(checkBarcodeValue("490154203237518")).toEqual({ ok: false, reason: "imei" });
   });
 

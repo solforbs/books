@@ -67,6 +67,7 @@ describe("Create several at once", () => {
       condition: "New",
       retailPrice: 8500000,
       source: "bulk",
+      locationId: "l1",
     });
   });
 
