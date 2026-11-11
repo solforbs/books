@@ -62,6 +62,8 @@ export class GenerateBarcodeUseCase {
         if (existing) return { value: null, product: await this.view.one(tenantId, row, t) };
 
         const value = await this.freeCode(tenantId, t);
+        // Nothing else was written: commit so the skipped numbers stay skipped, then refuse.
+        if (value === null) return { failed: true as const };
         await this.barcodes.create(
           tenantId,
           { productId: id, packUnitId: packUnitId ?? null, value, kind: "shop" },
@@ -86,6 +88,7 @@ export class GenerateBarcodeUseCase {
     } catch (err) {
       throw (await this.conflicts.translate(err, { tenantId })) ?? err;
     }
+    if ("failed" in result) throw CatalogErrors.barcodeGenerationFailed();
     if (result.value) {
       await this.audit.record({
         ...auditBase(actor),
@@ -97,12 +100,13 @@ export class GenerateBarcodeUseCase {
     return { product: result.product };
   }
 
+  /** `null` after MAX_ATTEMPTS occupied numbers; the counter has already moved past them. */
   private async freeCode(tenantId: string, t: Parameters<BarcodesRepository["lockValues"]>[2]) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const code = shopBarcodeFromSequence(await this.sequences.next(tenantId, t));
       await this.barcodes.lockValues(tenantId, [code], t);
       if ((await this.barcodes.activeByValues(tenantId, [code], t)).length === 0) return code;
     }
-    throw new Error("could not find a free shop barcode");
+    return null;
   }
 }

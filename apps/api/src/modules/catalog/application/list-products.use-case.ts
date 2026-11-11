@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { ProductsResponse } from "@books/shared";
+import { isUuid } from "../../../common/database/uuid";
 import { TenantDb } from "../../../common/tenancy/tenant-db";
 import { normalizeBarcode } from "@books/shared";
 import {
@@ -25,7 +26,7 @@ export const encodeCursor = (nameKey: string, id: string) =>
 export function decodeCursor(raw: string): { nameKey: string; id: string } | null {
   try {
     const [nameKey, id] = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as unknown[];
-    return typeof nameKey === "string" && typeof id === "string" ? { nameKey, id } : null;
+    return typeof nameKey === "string" && isUuid(id) ? { nameKey, id } : null;
   } catch {
     return null;
   }

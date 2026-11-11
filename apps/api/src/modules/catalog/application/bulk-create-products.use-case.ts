@@ -23,7 +23,7 @@ export class BulkCreateProductsUseCase {
     const results: BulkCreateResponse["results"] = [];
     for (const [index, item] of input.items.entries()) {
       try {
-        const { product } = await this.create.execute(actor, item);
+        const { product } = await this.create.execute(actor, { ...item, source: "bulk" });
         results.push({ index, product, error: null });
       } catch (err) {
         if (!(err instanceof AppError)) throw err;

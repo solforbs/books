@@ -37,7 +37,10 @@ const post = (path: string, body?: unknown) =>
 export const productsApi = {
   list: (query: ProductListQuery) =>
     apiRequest(`/products${queryString({ ...query })}`, { schema: productsResponseSchema }),
-  waiting: () => apiRequest("/products/waiting", { schema: productsResponseSchema }),
+  waiting: (query: { cursor?: string; limit?: number } = {}) =>
+    apiRequest(`/products/waiting${queryString({ ...query })}`, {
+      schema: productsResponseSchema,
+    }),
   lookup: (barcode: string) =>
     apiRequest(`/products/lookup${queryString({ barcode })}`, { schema: productsResponseSchema }),
   options: () => apiRequest("/products/options", { schema: productOptionsResponseSchema }),

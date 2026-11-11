@@ -46,6 +46,8 @@ export const CatalogErrors = {
   notWaiting: () => conflict("not_waiting", "Only a waiting product can be decided"),
   invalidMergeTarget: (reason: string) =>
     conflict("invalid_merge_target", "Choose another active product to merge into", { reason }),
+  barcodeGenerationFailed: () =>
+    conflict("barcode_generation_failed", "Could not find a free shop barcode; try again"),
   productClosed: () => conflict("product_closed", "This product was merged or rejected"),
   /** Validation-shaped, so the web app can show it under the field. */
   fieldRequired: (path: string, message = "required") =>

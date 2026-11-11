@@ -135,7 +135,7 @@ function packUnits(values: ProductFormValues, ctx: RequestContext, issues: FormI
   return units;
 }
 
-type Source = "form" | "bulk" | "quick_add" | "import";
+type Source = "form" | "quick_add";
 
 export function buildCreateRequest(
   values: ProductFormValues,

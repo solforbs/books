@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCT_ERROR_CODES,
+  addBarcodeRequestSchema,
+  approveProductRequestSchema,
+  bulkCreateRequestSchema,
   buildProductName,
   conditionFamilyKey,
   createCategoryRequestSchema,
@@ -88,5 +92,43 @@ describe("product permissions", () => {
     expect(effectivePermissions("accountant").has("add_products")).toBe(false);
     expect(effectivePermissions("manager").has("manage_products")).toBe(true);
     expect(effectivePermissions("cashier").has("manage_products")).toBe(false);
+  });
+});
+
+describe("S1b review fixes (contracts)", () => {
+  const base = { categoryId: "c1", name: "Item" };
+  it("approve takes one strict schema: empty is a plain approve, bad or unknown fixes fail", () => {
+    expect(approveProductRequestSchema.safeParse({}).success).toBe(true);
+    expect(approveProductRequestSchema.safeParse({ name: "Fixed", retailPrice: 100 }).success).toBe(
+      true,
+    );
+    expect(approveProductRequestSchema.safeParse({ name: "Fixed", retailPrice: -5 }).success).toBe(
+      false,
+    );
+    expect(approveProductRequestSchema.safeParse({ nonsense: 1 }).success).toBe(false);
+  });
+  it("barcodes may be 43 characters, not 44", () => {
+    const ok = "1".repeat(43);
+    expect(createProductRequestSchema.safeParse({ ...base, barcodes: [ok] }).success).toBe(true);
+    expect(createProductRequestSchema.safeParse({ ...base, barcodes: [ok + "1"] }).success).toBe(
+      false,
+    );
+    expect(addBarcodeRequestSchema.safeParse({ value: ok }).success).toBe(true);
+    expect(addBarcodeRequestSchema.safeParse({ value: ok + "1" }).success).toBe(false);
+  });
+  it("a single create accepts only form or quick_add; a bulk row may say anything (server forces bulk)", () => {
+    for (const source of ["form", "quick_add"]) {
+      expect(createProductRequestSchema.safeParse({ ...base, source }).success).toBe(true);
+    }
+    for (const source of ["import", "bulk"]) {
+      expect(createProductRequestSchema.safeParse({ ...base, source }).success).toBe(false);
+    }
+    expect(
+      bulkCreateRequestSchema.safeParse({ items: [{ ...base, source: "import" }] }).success,
+    ).toBe(true);
+  });
+  it("lists the new stable error codes", () => {
+    expect(PRODUCT_ERROR_CODES).toContain("invalid_cursor");
+    expect(PRODUCT_ERROR_CODES).toContain("barcode_generation_failed");
   });
 });

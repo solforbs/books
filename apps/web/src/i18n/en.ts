@@ -176,6 +176,8 @@ export const en = {
     product_closed: "This product was already merged or rejected, so it cannot be changed.",
     price_required: "Enter the selling price.",
     invalid_merge_target: "You cannot merge a product into this one. Choose another product.",
+    invalid_cursor: "This page of the list is not valid. Reload the list and try again.",
+    barcode_generation_failed: "Could not make a new barcode just now. Please try again.",
     category_exists: "You already have a category with this name.",
     category_in_use: "This category still has products. Move them to another category first.",
     category_not_found: "This category was not found.",

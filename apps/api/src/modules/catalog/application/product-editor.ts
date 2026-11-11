@@ -4,7 +4,7 @@ import type { z } from "zod";
 import type { TenantTx } from "../../../common/tenancy/tenant-db";
 import type { Actor } from "../../identity/domain/actor";
 import { LocationsService } from "../../locations/application/locations.service";
-import { locationScopeOf } from "../../locations/domain/location-scope";
+import { inScope, locationScopeOf } from "../../locations/domain/location-scope";
 import { CatalogErrors } from "../domain/catalog-errors";
 import { diffDrafts, touchesPrices, type FieldChange } from "../domain/product-changes";
 import {
@@ -213,13 +213,16 @@ export class ProductEditor {
     const wanted = dedupeLocationPrices(patch.locationPrices).filter(
       (p) => p.retailPrice !== null || p.wholesalePrice !== null,
     );
+    const scope = locationScopeOf(actor.access);
     await this.locations.assertUsable(
       t.tenantId,
       wanted.map((p) => p.locationId),
-      locationScopeOf(actor.access),
+      scope,
       t,
     );
+    // Prices of locations outside the caller's scope are not theirs to see or clear.
     const existing = (await this.locationPrices.forProducts(t.tenantId, [productId], t))
+      .filter((p) => inScope(scope, p.locationId))
       .filter((p) => p.retailPrice !== null || p.wholesalePrice !== null)
       .map((p) => ({
         locationId: p.locationId,
@@ -229,7 +232,7 @@ export class ProductEditor {
     const order = (list: typeof wanted) =>
       JSON.stringify([...list].sort((a, b) => a.locationId.localeCompare(b.locationId)));
     if (order(existing) === order(wanted)) return null;
-    await this.locationPrices.replace(t.tenantId, productId, wanted, t);
+    await this.locationPrices.replace(t.tenantId, productId, wanted, t, scope);
     return { field: "locationPrices", before: existing, after: wanted };
   }
 }
