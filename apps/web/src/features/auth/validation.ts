@@ -18,6 +18,7 @@ const CONTRACT_MESSAGES = new Set([
   "weak_password",
   "invalid_kra_pin",
   "location_required",
+  "invalid_amount",
 ]);
 const NAME_FIELDS = new Set(["businessName", "ownerName", "name"]);
 

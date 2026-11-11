@@ -184,3 +184,18 @@ Let any shop put its goods into the system **quickly and correctly**, without du
 - **Business setting "Charge VAT": OFF by default.** Most shops don't deal with VAT [F].
 - **When OFF:** no VAT fields, no VAT on receipts. Profit = selling price − cost, exactly as typed.
 - **When ON:** the app follows **KRA's rules** (rates such as 16% standard, exempt and zero-rated, and how VAT is shown and claimed). It doesn't invent its own. Products get a VAT type, delivery lines store their VAT amount, and profit is calculated without VAT.
+
+## 16. Founders' decisions during the build of Slice 1b (2026-11-10 and 2026-11-11)
+These answers settle points the original spec left open. The build follows them.
+1. **Where a product was added:** the shop or store the person was working in is recorded in the product's history and audit entry (with who, when and how). The **device** is recorded later, with the device features.
+2. **Shared manufacturer barcode** between products that differ only in condition (New / Ex-UK): allowed. Scanning it asks "New or Ex-UK?", and that question is the confirmation.
+3. **Typed-name products:** an exact same name is blocked as a duplicate. The person is taken to the existing product. When the Receiving feature (F04) is built, that message also offers **"Add stock to it"**, so they add the quantity there.
+4. **Merging** is allowed from waiting, active or hidden products into an active or waiting product. It cannot be undone. Only approvers can merge.
+5. **Hiding** works on active and waiting products; unhiding restores the previous status.
+6. **Rejecting** a product frees its barcodes; a hidden product keeps blocking its name and barcodes.
+7. The typed **condition** is shown in the standard spelling ("ex uk" becomes "Ex-UK").
+8. **Barcode rule:** letters, digits and `-` `.` `/`, 3 to 43 characters. This covers EAN-8/13, UPC-A/E, ITF-14 carton codes and Code 39 / Code 128 shop labels. A 15-digit number that is a valid IMEI is refused as a barcode ("This is an IMEI, not a product barcode").
+9. **Everyone in the business, including the accountant, can read** products, categories and suggestions.
+10. **Products with typed names** (laptops, TVs, chargers and so on) have no required parts. **Categories "built from parts"** (phones) require all five parts: brand, model, storage, colour and condition.
+11. **Merge target and default list:** the product list shows active and waiting products by default; hidden, merged and rejected ones only when asked.
+

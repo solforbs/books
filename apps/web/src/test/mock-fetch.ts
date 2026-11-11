@@ -35,10 +35,13 @@ export function mockFetch(routes: Routes) {
     const body = typeof init.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
     calls.push({ method, path, init, body });
 
-    const entry = routes[key] ?? fallback[key];
+    // A route written without its query string ("GET /products") answers every query.
+    const plainKey = key.split("?")[0] ?? key;
+    const routeKey = routes[key] ? key : routes[plainKey] ? plainKey : key;
+    const entry = routes[routeKey] ?? fallback[key];
     const list = entry === undefined ? [] : Array.isArray(entry) ? entry : [entry];
-    const index = counters.get(key) ?? 0;
-    counters.set(key, index + 1);
+    const index = counters.get(routeKey) ?? 0;
+    counters.set(routeKey, index + 1);
     const handler = list[Math.min(index, list.length - 1)];
     const result: MockResponse = handler
       ? typeof handler === "function"

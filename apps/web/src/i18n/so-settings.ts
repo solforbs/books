@@ -12,6 +12,7 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
   nav: {
     label: "Liiska weyn",
     home: "Bogga hore",
+    products: "Alaabta",
     settings: "Dejinta",
   },
   setup: {
@@ -30,6 +31,11 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     locations: { title: "Goobaha", hint: "Dukaamadaada iyo bakhaarradaada" },
     moneyPlaces: { title: "Meelaha lacagta", hint: "M-Pesa, bangi, sanduuq iyo khasnadaha" },
     staff: { title: "Shaqaalaha", hint: "Dadka kula shaqeeya" },
+    // TODO(translate-review)
+    categories: {
+      title: "Qaybaha alaabta",
+      hint: "Telefoonno, chargers iyo qaybaha kale ee alaabta",
+    },
   },
   businessDetails: {
     intro:
@@ -175,6 +181,9 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     manage_locations: "Ku dar oo beddel goobaha iyo meelaha lacagta",
     add_staff: "Ku dar khasnajiyayaal iyo bakhaar-hayeyaal",
     approve_items: "Oggolow alaab iyo alaab-qeybiyeyaal cusub",
+    add_products: "Ku dar alaab",
+    // TODO(translate-review)
+    manage_products: "Beddel, qari oo habee alaabta iyo qaybaha",
     set_prices: "Beddel qiimaha",
     see_cost_profit: "Arag kharashka iyo faa'iidada",
     sell: "Iibi oo lacag qaado",

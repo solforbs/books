@@ -1,3 +1,4 @@
+import { enCatalog } from "./en-catalog";
 import { enSettings } from "./en-settings";
 
 /** English UI text. Every key here must also exist in `so.ts` (checked by a test and by types). */
@@ -156,6 +157,29 @@ export const en = {
     cannot_change_self: "You cannot change your own role or switch yourself off.",
     location_required: "Choose at least one location.",
     member_not_found: "This staff member was not found.",
+    product_not_found: "This product was not found.",
+    duplicate_product: "This product already exists.",
+    barcode_in_use: "This barcode already belongs to another product.",
+    similar_products: "A similar product already exists. Please check the list.",
+    packs_not_allowed:
+      "Phones and other items with an IMEI or serial number cannot have pack sizes. Each one is scanned alone.",
+    product_in_use:
+      "This product already has stock or sales, so this cannot be changed. Make a new product instead.",
+    product_has_stock:
+      "This product still has stock. Sell, move or adjust the stock first, then hide it.",
+    invalid_barcode: "This barcode is not valid. Check the number and try again.",
+    not_waiting: "This product is not waiting for approval any more.",
+    pack_not_found: "This pack size was not found.",
+    barcode_not_found: "This barcode was not found.",
+    pack_exists: "This product already has a pack size with this name.",
+    product_closed: "This product was already merged or rejected, so it cannot be changed.",
+    price_required: "Enter the selling price.",
+    invalid_merge_target: "You cannot merge a product into this one. Choose another product.",
+    invalid_cursor: "This page of the list is not valid. Reload the list and try again.",
+    barcode_generation_failed: "Could not make a new barcode just now. Please try again.",
+    category_exists: "You already have a category with this name.",
+    category_in_use: "This category still has products. Move them to another category first.",
+    category_not_found: "This category was not found.",
     unknown: "Something went wrong. Please try again.",
   },
   validation: {
@@ -168,6 +192,8 @@ export const en = {
     check_field: "Please check this.",
     invalid_kra_pin: "A KRA PIN is one letter, 9 numbers and one letter, like A123456789B.",
     location_required: "Choose at least one location.",
+    invalid_amount: "Enter an amount like 1,200 or 1,200.50.",
   },
   ...enSettings,
+  ...enCatalog,
 } as const;

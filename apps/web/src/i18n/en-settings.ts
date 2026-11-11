@@ -9,6 +9,7 @@ export const enSettings = {
   nav: {
     label: "Main menu",
     home: "Home",
+    products: "Products",
     settings: "Settings",
   },
   setup: {
@@ -27,6 +28,10 @@ export const enSettings = {
     locations: { title: "Locations", hint: "Your shops and stores" },
     moneyPlaces: { title: "Money places", hint: "M-Pesa, bank, safe and cash drawers" },
     staff: { title: "Staff", hint: "People who work with you" },
+    categories: {
+      title: "Product categories",
+      hint: "Phones, chargers and your other product groups",
+    },
   },
   businessDetails: {
     intro: "These details show on your receipts and other documents. Only the name is needed.",
@@ -169,6 +174,8 @@ export const enSettings = {
     manage_locations: "Add and change locations and money places",
     add_staff: "Add cashiers and storekeepers",
     approve_items: "Approve new products and suppliers",
+    add_products: "Add products",
+    manage_products: "Change, hide and organise products and categories",
     set_prices: "Change prices",
     see_cost_profit: "See costs and profit",
     sell: "Sell and take payments",

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { DB, type Database, type Executor } from "../../../common/database/database.types";
 import { isUuid } from "../../../common/database/uuid";
 import { LOCKOUT_MS, MAX_FAILED_LOGINS, isLocked } from "../domain/auth-policy";
@@ -23,6 +23,17 @@ export class UsersRepository {
     if (!isUuid(id)) return null;
     const [row] = await tx.select().from(users).where(eq(users.id, id)).limit(1);
     return row ?? null;
+  }
+
+  /** Display names by user id (unknown or malformed ids are simply absent). */
+  async namesByIds(ids: string[], tx: Executor = this.db): Promise<Map<string, string>> {
+    const valid = [...new Set(ids.filter(isUuid))];
+    if (valid.length === 0) return new Map();
+    const rows = await tx
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, valid));
+    return new Map(rows.map((r) => [r.id, r.name]));
   }
 
   /** `identifier` is already normalised (phone E.164, email lower-case) by `identifierSchema`. */

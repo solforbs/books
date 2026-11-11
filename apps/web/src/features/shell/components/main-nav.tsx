@@ -1,7 +1,8 @@
-import { House, Settings, type LucideIcon } from "lucide-react";
+import { House, Package, Settings, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 import { useAccess } from "@/features/access/hooks/use-access";
+import { useWaitingProducts } from "@/features/catalog/hooks/use-waiting-products";
 import { visibleSettingsEntries } from "@/features/settings/settings-entries";
 import { cn } from "@/lib/utils";
 
@@ -10,17 +11,43 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end: boolean;
+  /** A small count next to the label, for example products waiting for approval. */
+  badge?: number;
 }
 
 function useNavItems(): NavItem[] {
   const { t } = useTranslation();
   const access = useAccess();
-  const items: NavItem[] = [{ to: "/", label: t("nav.home"), icon: House, end: true }];
+  const waiting = useWaitingProducts();
+  const items: NavItem[] = [
+    { to: "/", label: t("nav.home"), icon: House, end: true },
+    // Every member can read products. The count appears only for approvers with items waiting.
+    {
+      to: "/products",
+      label: t("nav.products"),
+      icon: Package,
+      end: false,
+      ...(waiting.count > 0 ? { badge: waiting.count } : {}),
+    },
+  ];
   // Settings appears only when at least one settings page is usable (no dead buttons).
   if (visibleSettingsEntries(access).length > 0) {
     items.push({ to: "/settings", label: t("nav.settings"), icon: Settings, end: false });
   }
   return items;
+}
+
+function NavBadge({ count }: { count: number | undefined }) {
+  const { t } = useTranslation();
+  if (!count) return null;
+  return (
+    <span
+      aria-label={t("catalog.nav.waiting", { count })}
+      className="min-w-6 rounded-full bg-amber-500 px-2 text-center text-sm font-bold text-slate-900"
+    >
+      {count}
+    </span>
+  );
 }
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -41,6 +68,7 @@ export function SideNav() {
             <NavLink to={item.to} end={item.end} className={linkClass}>
               <item.icon aria-hidden className="h-5 w-5" />
               {item.label}
+              <NavBadge count={item.badge} />
             </NavLink>
           </li>
         ))}
@@ -67,6 +95,7 @@ export function BottomNav() {
             >
               <item.icon aria-hidden className="h-5 w-5" />
               {item.label}
+              <NavBadge count={item.badge} />
             </NavLink>
           </li>
         ))}

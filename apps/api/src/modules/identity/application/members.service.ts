@@ -46,6 +46,15 @@ export class MembersService {
     return record ? (await this.toMembers(tenantId, [record], within))[0]! : null;
   }
 
+  /**
+   * Names of people by user id, to show "added by ..." (catalog, later slices). Pass the
+   * caller's transaction when inside one: a second pooled connection per request would
+   * starve the pool under load.
+   */
+  namesOf(userIds: string[], within?: TenantTx): Promise<Map<string, string>> {
+    return this.users.namesByIds(userIds, within?.tx);
+  }
+
   /** Whether any account already uses this phone or this email. */
   accountExists(phone?: string, email?: string): Promise<boolean> {
     return this.users.existsWith(phone, email);

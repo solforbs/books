@@ -6,6 +6,13 @@ import { LoginPage } from "@/features/auth/pages/login-page";
 import { RecoverPage } from "@/features/auth/pages/recover-page";
 import { RegisterPage } from "@/features/auth/pages/register-page";
 import { BusinessDetailsPage } from "@/features/business/pages/business-details-page";
+import { BulkProductsPage } from "@/features/catalog/pages/bulk-products-page";
+import { CategoriesPage } from "@/features/catalog/pages/categories-page";
+import { AddProductPage } from "@/features/catalog/pages/add-product-page";
+import { EditProductPage } from "@/features/catalog/pages/edit-product-page";
+import { ProductDetailPage } from "@/features/catalog/pages/product-detail-page";
+import { ProductsPage } from "@/features/catalog/pages/products-page";
+import { WaitingPage } from "@/features/catalog/pages/waiting-page";
 import { HomePage } from "@/features/home/pages/home-page";
 import { LocationsPage } from "@/features/locations/pages/locations-page";
 import { MoneyPlacesPage } from "@/features/locations/pages/money-places-page";
@@ -67,6 +74,12 @@ export function AppRoutes() {
         }
       >
         <Route index element={<HomePage />} />
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="products/new" element={<AddProductPage />} />
+        <Route path="products/bulk" element={<BulkProductsPage />} />
+        <Route path="products/waiting" element={<WaitingPage />} />
+        <Route path="products/:id" element={<ProductDetailPage />} />
+        <Route path="products/:id/edit" element={<EditProductPage />} />
         <Route path="settings" element={<SettingsMenuPage />} />
         <Route
           path="settings/business"
@@ -89,6 +102,14 @@ export function AppRoutes() {
           element={
             <RequireSettingsAccess entry="moneyPlaces">
               <MoneyPlacesPage />
+            </RequireSettingsAccess>
+          }
+        />
+        <Route
+          path="settings/categories"
+          element={
+            <RequireSettingsAccess entry="categories">
+              <CategoriesPage />
             </RequireSettingsAccess>
           }
         />
