@@ -14,6 +14,7 @@ export const PERMISSIONS = [
   "approve_items", // approve products/suppliers added by non-approvers (F01, F03)
   "add_products", // add products; non-approvers' products wait for approval (F01 §8)
   "manage_products", // edit, hide, retire barcodes/packs, manage categories (F01 §11)
+  "manage_suppliers", // add and edit suppliers and their payment rules (F03 §3)
   "set_prices", // change selling and minimum prices
   "see_cost_profit", // see buying costs and profit
   "sell", // sell and take payments (F06)
@@ -36,6 +37,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "approve_items",
     "add_products",
     "manage_products",
+    "manage_suppliers",
     "set_prices",
     "sell",
     "give_discounts",

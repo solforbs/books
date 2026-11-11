@@ -12,3 +12,4 @@ export * from "./catalog/barcode";
 export * from "./catalog/product-name";
 export * from "./contracts/products.contract";
 export * from "./contracts/product-categories.contract";
+export * from "./contracts/suppliers.contract";
