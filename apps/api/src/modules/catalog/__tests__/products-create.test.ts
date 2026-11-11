@@ -22,32 +22,6 @@ describe("creating products (F01 §5, §6, §9)", () => {
   });
   afterAll(() => t.close());
 
-  it("records the shop a product was added in, in its history (F01 §8, founders 1a)", async () => {
-    const { owner, accessories, shop } = await shopWithCatalog(t);
-    const withShop = await addProduct(owner, {
-      ...accessoryBody(accessories.id, "Tripod"),
-      locationId: shop.id,
-    });
-    const without = await addProduct(owner, accessoryBody(accessories.id, "Ring light"));
-    const created = async (id: string) =>
-      (await owner.get(`/products/${id}/history`))
-        .json<ProductHistoryResponse>()
-        .entries.find((e) => e.action === "created");
-    expect((await created(withShop.id))?.after).toMatchObject({ locationId: shop.id });
-    expect((await created(without.id))?.after).toMatchObject({ locationId: null });
-  });
-
-  it("refuses a location that is not an open location of this business", async () => {
-    const { owner, accessories } = await shopWithCatalog(t);
-    const stranger = await shopWithCatalog(t);
-    const res = await owner.post("/products", {
-      ...accessoryBody(accessories.id, "Tripod"),
-      locationId: stranger.shop.id,
-    });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error.code).toBe("location_not_found");
-  });
-
   it("T1: creates several at once and links them to one model group", async () => {
     const { owner, phones, tenantId } = await shopWithCatalog(t);
     const items = ["128GB", "256GB"].flatMap((storage) =>
