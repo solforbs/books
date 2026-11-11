@@ -1,7 +1,7 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { NO_PROBLEMS, catalogRoutes, makeProduct } from "@/test/catalog-fixtures";
+import { NO_PROBLEMS, catalogRoutes, makeCategory, makeProduct } from "@/test/catalog-fixtures";
 import { renderShop } from "@/test/render-shop";
 import { accessFor } from "@/test/shop-fixtures";
 
@@ -17,6 +17,46 @@ async function fillPhone(user: UserEvent) {
 }
 
 describe("Add a product", () => {
+  it("adds a category inline without nesting a form inside the product form", async () => {
+    const laptops = makeCategory({ id: "c-laptops", name: "Laptops", defaultTracking: "serial" });
+    const { user, calls } = renderShop("/products/new", {
+      ...catalogRoutes(),
+      "POST /product-categories": { status: 201, body: { category: laptops } },
+    });
+    await user.click(await screen.findByRole("button", { name: "Add a category" }));
+    // A form inside a form is invalid HTML: the browser then submits the page instead of saving.
+    expect(document.querySelector("form form")).toBeNull();
+
+    await user.type(screen.getByLabelText("Category name"), "Laptops");
+    await user.click(screen.getByRole("radio", { name: "Serial number" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(calls.some((c) => c.path === "/product-categories" && c.method === "POST")).toBe(true),
+    );
+    expect(
+      calls.find((c) => c.method === "POST" && c.path === "/product-categories")?.body,
+    ).toMatchObject({
+      name: "Laptops",
+      defaultTracking: "serial",
+    });
+  });
+
+  it("saves the inline category when Enter is pressed in its name field", async () => {
+    const { user, calls } = renderShop("/products/new", {
+      ...catalogRoutes(),
+      "POST /product-categories": {
+        status: 201,
+        body: { category: makeCategory({ id: "c-x", name: "Cables" }) },
+      },
+    });
+    await user.click(await screen.findByRole("button", { name: "Add a category" }));
+    await user.type(screen.getByLabelText("Category name"), "Cables{Enter}");
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === "/product-categories")).toBe(true),
+    );
+  });
+
   it("shows a live name preview built from the parts", async () => {
     const { user } = renderShop("/products/new", catalogRoutes());
     await fillPhone(user);
