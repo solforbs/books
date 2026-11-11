@@ -1,5 +1,6 @@
 import { PRODUCT_STATUSES } from "@books/shared";
 import { z } from "zod";
+import { badRequest } from "../../../common/errors/app-error";
 import { decodeCursor } from "../application/list-products.use-case";
 
 /**
@@ -14,10 +15,10 @@ export const productListQuerySchema = z.object({
   cursor: z
     .string()
     .max(500)
-    .transform((raw, ctx) => {
+    .transform((raw) => {
       const cursor = decodeCursor(raw);
-      if (!cursor) ctx.addIssue({ code: "custom", message: "invalid_cursor" });
-      return cursor ?? undefined;
+      if (!cursor) throw badRequest("invalid_cursor", "This page marker is not valid");
+      return cursor;
     })
     .optional(),
 });

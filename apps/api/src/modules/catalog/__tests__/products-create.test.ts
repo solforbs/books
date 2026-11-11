@@ -32,7 +32,6 @@ describe("creating products (F01 §5, §6, §9)", () => {
           storage,
           colour,
           condition: "New",
-          source: "bulk",
         }),
       ),
     );

@@ -22,7 +22,10 @@ import { ProductChecks } from "./product-checks";
 import { ProductConflicts } from "./product-conflicts";
 import { ProductView } from "./product-view";
 
-export type CreateProductInput = z.output<typeof createProductRequestSchema>;
+/** `bulk` is never sent by a client on a single create; the bulk use case sets it. */
+export type CreateProductInput = Omit<z.output<typeof createProductRequestSchema>, "source"> & {
+  source: "form" | "quick_add" | "bulk";
+};
 
 /** Validates every typed barcode (digits/letters, no IMEI) and removes repeats. */
 export function cleanBarcodes(values: string[]): string[] {
@@ -184,7 +187,7 @@ export class CreateProductUseCase {
       await this.barcodes.create(t.tenantId, { productId: row.id, value, kind: "manufacturer" }, t);
     }
     if (wantedPrices.length > 0) {
-      await this.locationPrices.replace(t.tenantId, row.id, wantedPrices, t);
+      await this.locationPrices.replace(t.tenantId, row.id, wantedPrices, t, null);
     }
     const acknowledged = input.acknowledgeSimilar ? found.similar.map((s) => s.id) : [];
     await this.history.add(

@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { isUuid } from "../../../common/database/uuid";
 import { TenantDb, type TenantTx } from "../../../common/tenancy/tenant-db";
 import { TenantScopedRepository } from "../../../common/tenancy/tenant-scoped.repository";
+import { inScope, type LocationScope } from "../../locations/domain/location-scope";
 import {
   productLocationPrices,
   type LocationPriceRow,
@@ -33,12 +34,14 @@ export class LocationPricesRepository extends TenantScopedRepository<typeof prod
   /**
    * Makes the stored prices equal `wanted`: new locations are added, changed ones updated,
    * and a location that is no longer wanted keeps its row with both prices cleared (G4).
+   * Only locations inside `scope` are cleared; rows outside it are left untouched.
    */
   async replace(
     tenantId: string,
     productId: string,
     wanted: LocationPriceValue[],
     within: TenantTx,
+    scope: LocationScope,
   ): Promise<void> {
     const current = await this.forProducts(tenantId, [productId], within);
     const byLocation = new Map(current.map((r) => [r.locationId, r]));
@@ -58,6 +61,7 @@ export class LocationPricesRepository extends TenantScopedRepository<typeof prod
     }
     for (const old of current) {
       if (
+        inScope(scope, old.locationId) &&
         !wantedIds.has(old.locationId) &&
         (old.retailPrice !== null || old.wholesalePrice !== null)
       ) {

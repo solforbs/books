@@ -59,13 +59,14 @@ export class ProductChecks {
     return this.products.findManyByIds(t.tenantId, ids, t);
   }
 
-  /** One clash per barcode: a shop code, or a manufacturer code held by a product that may not share it. */
+  /** One clash per barcode (products in `selfId` never clash with themselves): a shop code, or a manufacturer code held by a product that may not share it. */
   async clashes(
     t: TenantTx,
     draft: SharingSubject,
     values: string[],
-    selfId?: string,
+    selfId?: string | readonly string[],
   ): Promise<CheckResult["clashes"]> {
+    const own = new Set(typeof selfId === "string" ? [selfId] : selfId);
     const held = await this.barcodes.activeByValues(t.tenantId, values, t);
     const owners = await this.products.findManyByIds(
       t.tenantId,
@@ -76,7 +77,7 @@ export class ProductChecks {
     const clashes = new Map<string, ProductRow>();
     for (const row of held) {
       const owner = ownerById.get(row.productId);
-      if (!owner || owner.id === selfId || !LIVE_STATUSES.includes(owner.status)) continue;
+      if (!owner || own.has(owner.id) || !LIVE_STATUSES.includes(owner.status)) continue;
       if (row.kind === "shop" || !canShareManufacturerBarcode(owner, draft)) {
         if (!clashes.has(row.value)) clashes.set(row.value, owner);
       }

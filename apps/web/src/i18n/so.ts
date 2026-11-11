@@ -226,6 +226,10 @@ export const so: Translations = {
     not_waiting: "Alaabtan mar dambe ma sugayso oggolaansho.",
     // TODO(translate-review)
     invalid_merge_target: "Alaab ma isku dari kartid kan. Dooro alaab kale.",
+    // TODO(translate-review)
+    invalid_cursor: "Boggan liiskan ma sax aha. Dib u soo rar liiska oo isku day mar kale.",
+    // TODO(translate-review)
+    barcode_generation_failed: "Hadda barcode cusub lama samayn karo. Fadlan isku day mar kale.",
     category_exists: "Qayb magacan leh horay ayaad u haysatay.",
     // TODO(translate-review)
     category_in_use: "Qaybtan weli alaab ayay leedahay. Marka hore u rar qayb kale.",

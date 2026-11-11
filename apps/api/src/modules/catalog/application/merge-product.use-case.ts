@@ -10,6 +10,7 @@ import { PackUnitsRepository } from "../infrastructure/pack-units.repository";
 import { ProductsRepository } from "../infrastructure/products.repository";
 import type { ProductRow } from "../infrastructure/tables/products.table";
 import { assertPermission } from "./access";
+import { ProductChecks } from "./product-checks";
 import { ProductMergeMover } from "./product-usage-probe";
 import { ProductView } from "./product-view";
 
@@ -27,6 +28,7 @@ export class MergeProductUseCase {
     private readonly products: ProductsRepository,
     private readonly packs: PackUnitsRepository,
     private readonly barcodes: BarcodesRepository,
+    private readonly checks: ProductChecks,
     private readonly history: HistoryRepository,
     private readonly mover: ProductMergeMover,
     private readonly view: ProductView,
@@ -49,7 +51,7 @@ export class MergeProductUseCase {
       if (target.status !== "active" && target.status !== "waiting") {
         throw CatalogErrors.invalidMergeTarget(`target_${target.status}`);
       }
-      const movedBarcodes = await this.moveOwnership(t, source, target);
+      const { moved: movedBarcodes, notMoved } = await this.moveOwnership(t, source, target);
       await this.mover.moveUsage(t, source.id, target.id);
       await this.products.updateById(
         tenantId,
@@ -89,6 +91,20 @@ export class MergeProductUseCase {
         ],
         t,
       );
+      if (notMoved.length > 0) {
+        await this.history.add(
+          tenantId,
+          target.id,
+          userId,
+          [
+            {
+              action: "merge_barcode_not_moved",
+              after: { fromProductId: source.id, fromName: source.name, barcodes: notMoved },
+            },
+          ],
+          t,
+        );
+      }
       const merged = (await this.products.findById(tenantId, source.id, t))!;
       return { product: await this.view.one(tenantId, merged, t), target, source, movedBarcodes };
     });
@@ -110,7 +126,10 @@ export class MergeProductUseCase {
    * name) is not duplicated: its barcodes join the target's pack. A pack that cannot move
    * (name clash, or the target is not a quantity product) is retired with its barcodes, so a
    * carton code can never start scanning as a single piece. A code the target already
-   * carries is simply retired on the source. Returns the barcode values now on the target.
+   * carries is simply retired on the source. A manufacturer code that the target could not
+   * hold under the F01 §7 sharing rule (another product that is not a condition sibling of the
+   * target carries it) is retired on the source too and reported in `notMoved`. Shop codes
+   * always move.
    */
   private async moveOwnership(t: TenantTx, source: ProductRow, target: ProductRow) {
     const { tenantId } = t;
@@ -145,11 +164,20 @@ export class MergeProductUseCase {
     }
     const held = new Set(targetCodes.map((c) => c.value));
     const moved: string[] = [];
+    const notMoved: string[] = [];
     for (const code of sourceCodes) {
       const newPack = code.packUnitId ? (packTarget.get(code.packUnitId) ?? null) : null;
       if (held.has(code.value) || (code.packUnitId && newPack === null)) {
         await this.barcodes.retireOne(tenantId, code.id, t);
         continue;
+      }
+      if (code.kind === "manufacturer") {
+        const clash = await this.checks.clashes(t, target, [code.value], [source.id, target.id]);
+        if (clash.length > 0) {
+          await this.barcodes.retireOne(tenantId, code.id, t);
+          notMoved.push(code.value);
+          continue;
+        }
       }
       await this.barcodes.updateById(
         tenantId,
@@ -160,6 +188,6 @@ export class MergeProductUseCase {
       held.add(code.value);
       moved.push(code.value);
     }
-    return moved;
+    return { moved, notMoved };
   }
 }

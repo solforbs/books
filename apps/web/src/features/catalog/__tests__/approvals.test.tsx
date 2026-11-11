@@ -42,7 +42,7 @@ describe("Approvals (G1)", () => {
   it("does not ask for the waiting list, or show any waiting wording, to non-approvers", async () => {
     const { calls } = renderShop("/products/waiting", routes, accessFor("cashier"));
     await screen.findByRole("heading", { name: "Products" });
-    expect(calls.some((c) => c.path === "/products/waiting")).toBe(false);
+    expect(calls.some((c) => c.path.startsWith("/products/waiting"))).toBe(false);
     expect(document.body.textContent).not.toMatch(/approv|waiting/i);
   });
 
@@ -55,7 +55,7 @@ describe("Approvals (G1)", () => {
       }),
     );
     await screen.findByRole("heading", { name: "Products" });
-    expect(calls.some((c) => c.path === "/products/waiting")).toBe(true);
+    expect(calls.some((c) => c.path.startsWith("/products/waiting"))).toBe(true);
     expect(document.body.textContent).not.toMatch(/approv|waiting/i);
   });
 
@@ -139,5 +139,27 @@ describe("Approvals (G1)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       'cannot be rejected. Use "Same as an existing product" instead.',
     );
+  });
+});
+
+describe("Approvals: paging through every waiting product", () => {
+  it("follows nextCursor so the badge counts all waiting products and the list shows them", async () => {
+    const page = (from: number, n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        makeProduct({ id: `w${from + i}`, name: `Waiting item ${from + i}`, status: "waiting" }),
+      );
+    const { calls } = renderShop("/products/waiting", {
+      ...routes,
+      "GET /products/waiting": [
+        productsPage(page(0, 100), "c1"),
+        productsPage(page(100, 100), "c2"),
+        productsPage(page(200, 5)),
+      ],
+    });
+    expect(
+      (await screen.findAllByLabelText("205 products waiting for approval")).length,
+    ).toBeGreaterThan(0);
+    expect(await screen.findByText("Waiting item 204")).toBeInTheDocument();
+    expect(calls.filter((c) => c.path.startsWith("/products/waiting"))).toHaveLength(3);
   });
 });

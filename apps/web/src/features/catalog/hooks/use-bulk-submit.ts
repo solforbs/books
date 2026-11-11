@@ -1,4 +1,4 @@
-import type { Category, CreateProductRequest } from "@books/shared";
+import type { BulkCreateItem, Category } from "@books/shared";
 import { useState } from "react";
 import { outcomeFromResult, type BulkRowData, type RowOutcome } from "../bulk-rows";
 import type { FormContextData } from "../components/form-api";
@@ -24,7 +24,7 @@ export function useBulkSubmit(data: FormContextData) {
   const [outcomes, setOutcomes] = useState<Record<string, RowOutcome>>({});
 
   const submit = async (rows: BulkRowData[], input: BulkInput, acknowledgeSimilar: boolean) => {
-    const items: CreateProductRequest[] = [];
+    const items: BulkCreateItem[] = [];
     const sent: BulkRowData[] = [];
     const next: Record<string, RowOutcome> = {};
     for (const row of rows) {
@@ -39,10 +39,10 @@ export function useBulkSubmit(data: FormContextData) {
           retail: input.prices[row.key] ?? "",
         }),
         { category: input.category, canSetPrices: data.canSetPrices, vatEnabled: data.vatEnabled },
-        { source: "bulk", acknowledgeSimilar, locationId: currentLocation?.id },
+        { acknowledgeSimilar, locationId: currentLocation?.id },
       );
       if (built.ok) {
-        items.push(built.request);
+        items.push({ ...built.request, source: "bulk" });
         sent.push(row);
       } else {
         const noPrice = built.issues.some(

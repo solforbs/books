@@ -82,44 +82,55 @@ export const locationPriceInputSchema = z.object({
   wholesalePrice: cents.nullable().optional(),
 });
 
-export const createProductRequestSchema = z
-  .object({
-    categoryId: z.string().min(1),
-    /** Required unless the category's naming mode is "parts" (then it is built from parts). */
-    name: text(150).optional(),
-    brand: optionalText(60),
-    model: optionalText(80),
-    storage: optionalText(30),
-    colour: optionalText(30),
-    condition: optionalText(30),
-    trackingType: z.enum(TRACKING_TYPES).optional(),
-    baseUnit: text(20).default("piece"),
-    packUnits: z.array(packUnitInputSchema).max(5).default([]),
-    /** Manufacturer barcodes typed or scanned; shop barcodes are generated afterwards. */
-    barcodes: z.array(text(40)).max(10).default([]),
-    retailPrice: cents.nullable().optional(),
-    wholesalePrice: cents.nullable().optional(),
-    minPrice: cents.nullable().optional(),
-    locationPrices: z.array(locationPriceInputSchema).max(50).default([]),
-    /** Only meaningful when the business has VAT switched on; ignored otherwise. */
-    vatType: z.enum(VAT_TYPES).nullable().optional(),
-    canBeGivenFree: z.boolean().default(false),
-    warrantyMonths: z.number().int().min(1).max(120).nullable().optional(),
-    acknowledgeSimilar: z.boolean().default(false),
-    /** How it was added, for the audit trail (F01 §8). */
-    source: z.enum(["form", "bulk", "quick_add", "import"]).default("form"),
-    /**
-     * The shop or store the person was working in (the location switcher). Recorded in the
-     * product's history and audit entry (F01 §8: who, when, where, how). Must be an open
-     * location the person may use (400 `location_not_found` otherwise). The device is
-     * recorded later, with the device features.
-     */
-    locationId: z.string().min(1).optional(),
-  })
-  .refine((d) => d.name || d.model, { message: "name_required", path: ["name"] });
-export type CreateProductRequest = z.input<typeof createProductRequestSchema>;
+const createProductFields = z.object({
+  categoryId: z.string().min(1),
+  /** Required unless the category's naming mode is "parts" (then it is built from parts). */
+  name: text(150).optional(),
+  brand: optionalText(60),
+  model: optionalText(80),
+  storage: optionalText(30),
+  colour: optionalText(30),
+  condition: optionalText(30),
+  trackingType: z.enum(TRACKING_TYPES).optional(),
+  baseUnit: text(20).default("piece"),
+  packUnits: z.array(packUnitInputSchema).max(5).default([]),
+  /** Manufacturer barcodes typed or scanned; shop barcodes are generated afterwards. */
+  barcodes: z.array(text(43)).max(10).default([]),
+  retailPrice: cents.nullable().optional(),
+  wholesalePrice: cents.nullable().optional(),
+  minPrice: cents.nullable().optional(),
+  locationPrices: z.array(locationPriceInputSchema).max(50).default([]),
+  /** Only meaningful when the business has VAT switched on; ignored otherwise. */
+  vatType: z.enum(VAT_TYPES).nullable().optional(),
+  canBeGivenFree: z.boolean().default(false),
+  warrantyMonths: z.number().int().min(1).max(120).nullable().optional(),
+  acknowledgeSimilar: z.boolean().default(false),
+  /** How it was added, for the audit trail (F01 §8); narrowed by each request schema below. */
+  /**
+   * The shop or store the person was working in (the location switcher). Recorded in the
+   * product's history and audit entry (F01 §8: who, when, where, how). Must be an open
+   * location the person may use (400 `location_not_found` otherwise). The device is
+   * recorded later, with the device features.
+   */
+  locationId: z.string().min(1).optional(),
+});
+const nameRequired = (d: { name?: string; model?: string | null }) => Boolean(d.name || d.model);
+const nameRequiredIssue = { message: "name_required", path: ["name"] };
 
-export const updateProductRequestSchema = z
+/**
+ * `source` is chosen by the client but lands in history and audit, so a single product only
+ * accepts the two ways a person adds one. `import` is refused until the import feature exists.
+ */
+export const createProductRequestSchema = createProductFields
+  .extend({ source: z.enum(["form", "quick_add"]).default("form") })
+  .refine(nameRequired, nameRequiredIssue);
+export type CreateProductRequest = z.input<typeof createProductRequestSchema>;
+/** A row of the bulk request; the server records `bulk` whatever the row says (never trusted). */
+const bulkItemSchema = createProductFields
+  .extend({ source: z.enum(["form", "bulk", "quick_add", "import"]).default("bulk") })
+  .refine(nameRequired, nameRequiredIssue);
+
+const updateProductFields = z
   .object({
     name: text(150),
     categoryId: z.string().min(1),
@@ -139,18 +150,24 @@ export const updateProductRequestSchema = z
     warrantyMonths: z.number().int().min(1).max(120).nullable(),
     acknowledgeSimilar: z.boolean(),
   })
-  .partial()
-  .refine((d) => Object.keys(d).length > 0, { message: "nothing_to_update" });
+  .partial();
+export const updateProductRequestSchema = updateProductFields.refine(
+  (d) => Object.keys(d).length > 0,
+  { message: "nothing_to_update" },
+);
 export type UpdateProductRequest = z.input<typeof updateProductRequestSchema>;
 
 export const addBarcodeRequestSchema = z.object({
-  value: text(40),
+  value: text(43),
   packUnitId: z.string().min(1).optional(),
 });
 export const generateBarcodeRequestSchema = z.object({ packUnitId: z.string().min(1).optional() });
 export const mergeProductRequestSchema = z.object({ intoProductId: z.string().min(1) });
-/** Approve may fix things first (F01 §8): same fields as update, all optional. */
-export const approveProductRequestSchema = updateProductRequestSchema.or(z.object({}));
+/**
+ * Approve may fix things first (F01 §8): the update fields, all optional, nothing else. An
+ * empty body is a plain approve; an invalid or unknown field is a 400, never silently dropped.
+ */
+export const approveProductRequestSchema = updateProductFields.strict();
 
 export const productBarcodeSchema = z.object({
   id: z.string(),
@@ -217,8 +234,9 @@ export const checkProductResponseSchema = z.object({
 export type CheckProductResponse = z.infer<typeof checkProductResponseSchema>;
 
 export const bulkCreateRequestSchema = z.object({
-  items: z.array(createProductRequestSchema).min(1).max(100),
+  items: z.array(bulkItemSchema).min(1).max(100),
 });
+export type BulkCreateItem = z.input<typeof bulkItemSchema>;
 export type BulkCreateRequest = z.input<typeof bulkCreateRequestSchema>;
 export const bulkCreateResponseSchema = z.object({
   results: z.array(
@@ -265,5 +283,7 @@ export const PRODUCT_ERROR_CODES = [
   "invalid_barcode",
   "not_waiting",
   "invalid_merge_target",
+  "invalid_cursor",
+  "barcode_generation_failed",
   "forbidden",
 ] as const;
