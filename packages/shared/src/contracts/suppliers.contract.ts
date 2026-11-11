@@ -145,9 +145,7 @@ export const updateSupplierRequestSchema = z
 export type UpdateSupplierRequest = z.input<typeof updateSupplierRequestSchema>;
 
 /** Completing a waiting supplier: the phone is required, anything else may be fixed too. */
-export const approveSupplierRequestSchema = z
-  .object(supplierFields)
-  .partial({
+export const approveSupplierRequestSchema = z.object(supplierFields).partial({
   name: true,
   paymentRule: true,
   currency: true,
