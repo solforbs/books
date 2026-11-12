@@ -2,6 +2,7 @@ import {
   AUTH_ERROR_CODES,
   BARCODE_KINDS,
   CATEGORY_ERROR_CODES,
+  DELIVERY_ERROR_CODES,
   LANGUAGES,
   LOCATION_ERROR_CODES,
   MONEY_PLACE_TYPES,
@@ -11,6 +12,8 @@ import {
   PRODUCT_ERROR_CODES,
   ROLES,
   STAFF_ERROR_CODES,
+  STOCK_ERROR_CODES,
+  UNIT_STATUSES,
   SUPPLIER_ERROR_CODES,
   TIME_UNITS,
   TRACKING_TYPES,
@@ -72,6 +75,9 @@ describe("translations", () => {
       ...BARCODE_KINDS.map((v) => `catalog.barcodes.kind.${v}`),
       ...["waiting", "hidden", "merged", "rejected"].map((v) => `catalog.status.${v}`),
       ...SUPPLIER_ERROR_CODES.map((c) => `errors.${c}`),
+      ...DELIVERY_ERROR_CODES.map((c) => `errors.${c}`),
+      ...STOCK_ERROR_CODES.map((c) => `errors.${c}`),
+      ...UNIT_STATUSES.map((s) => `receiving.unitStatus.${s}`),
       ...PAYMENT_RULE_TYPES.flatMap((r) => [
         `suppliers.rule.choice.${r}`,
         `suppliers.rule.short.${r}`,
@@ -88,12 +94,15 @@ describe("translations", () => {
     }
   });
 
-  it("has every text key the catalog and suppliers screens ask for, in both languages", () => {
-    const sources = import.meta.glob<string>("/src/features/{catalog,suppliers}/**/*.{ts,tsx}", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    });
+  it("has every text key the catalog, suppliers, receiving and stock screens ask for, in both languages", () => {
+    const sources = import.meta.glob<string>(
+      "/src/features/{catalog,suppliers,receiving,stock}/**/*.{ts,tsx}",
+      {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      },
+    );
     const used = new Set<string>();
     for (const [file, text] of Object.entries(sources)) {
       if (file.includes("__tests__")) continue;

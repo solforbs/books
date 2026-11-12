@@ -16,6 +16,12 @@ import { WaitingPage } from "@/features/catalog/pages/waiting-page";
 import { HomePage } from "@/features/home/pages/home-page";
 import { LocationsPage } from "@/features/locations/pages/locations-page";
 import { MoneyPlacesPage } from "@/features/locations/pages/money-places-page";
+import { RequireAnyPermission } from "@/features/access/components/require-permission";
+import { DeliveriesPage } from "@/features/receiving/pages/deliveries-page";
+import { DeliveryPage } from "@/features/receiving/pages/delivery-page";
+import { StockInPage } from "@/features/receiving/pages/stock-in-page";
+import { STOCK_VIEW_PERMISSIONS } from "@/features/stock/stock-permissions";
+import { StockPage } from "@/features/stock/pages/stock-page";
 import { RequireSettingsAccess } from "@/features/settings/components/require-settings-access";
 import { SettingsMenuPage } from "@/features/settings/pages/settings-menu-page";
 import { RequireSuppliersAccess } from "@/features/suppliers/components/require-suppliers-access";
@@ -124,6 +130,38 @@ export function AppRoutes() {
             <RequireSuppliersAccess need="manage">
               <EditSupplierPage />
             </RequireSuppliersAccess>
+          }
+        />
+        <Route
+          path="receiving"
+          element={
+            <RequireAnyPermission any={["receive_stock"]}>
+              <DeliveriesPage />
+            </RequireAnyPermission>
+          }
+        />
+        <Route
+          path="receiving/new"
+          element={
+            <RequireAnyPermission any={["receive_stock"]}>
+              <StockInPage />
+            </RequireAnyPermission>
+          }
+        />
+        <Route
+          path="receiving/:id"
+          element={
+            <RequireAnyPermission any={["receive_stock"]}>
+              <DeliveryPage />
+            </RequireAnyPermission>
+          }
+        />
+        <Route
+          path="stock"
+          element={
+            <RequireAnyPermission any={STOCK_VIEW_PERMISSIONS}>
+              <StockPage />
+            </RequireAnyPermission>
           }
         />
         <Route path="settings" element={<SettingsMenuPage />} />

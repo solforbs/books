@@ -1,4 +1,5 @@
 import { soCatalog } from "./so-catalog";
+import { soReceiving, soReceivingErrors } from "./so-receiving";
 import { soSettings } from "./so-settings";
 import { soSuppliers } from "./so-suppliers";
 import type { Translations } from "./types";
@@ -248,6 +249,7 @@ export const so: Translations = {
     supplier_not_active:
       "Alaab-qeybiyahan weli wuxuu sugayaa dhammaystir. Marka hore dhammaystir, kadibna qari.",
     phone_required: "Geli lambarka taleefanka alaab-qeybiyaha.",
+    ...soReceivingErrors,
     unknown: "Wax baa khaldamay. Fadlan isku day mar kale.",
   },
   validation: {
@@ -268,4 +270,5 @@ export const so: Translations = {
   ...soSettings,
   ...soCatalog,
   ...soSuppliers,
+  ...soReceiving,
 };

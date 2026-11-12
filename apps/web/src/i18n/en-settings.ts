@@ -11,6 +11,8 @@ export const enSettings = {
     home: "Home",
     products: "Products",
     suppliers: "Suppliers",
+    receiving: "Stock in",
+    stock: "Stock",
     settings: "Settings",
   },
   setup: {
@@ -186,6 +188,7 @@ export const enSettings = {
     give_discounts: "Give discounts",
     do_refunds: "Do refunds",
     receive_stock: "Receive stock",
+    pay_suppliers: "Pay suppliers",
     record_expenses: "Record expenses",
     close_day: "Close the day",
     view_reports: "See reports",

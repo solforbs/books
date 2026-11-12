@@ -1,4 +1,5 @@
 import { enCatalog } from "./en-catalog";
+import { enReceiving, enReceivingErrors } from "./en-receiving";
 import { enSettings } from "./en-settings";
 import { enSuppliers } from "./en-suppliers";
 
@@ -190,6 +191,7 @@ export const en = {
     supplier_not_active:
       "This supplier is still waiting for completion. Complete it first, then you can hide it.",
     phone_required: "Enter the supplier's phone number.",
+    ...enReceivingErrors,
     unknown: "Something went wrong. Please try again.",
   },
   validation: {
@@ -207,4 +209,5 @@ export const en = {
   ...enSettings,
   ...enCatalog,
   ...enSuppliers,
+  ...enReceiving,
 } as const;

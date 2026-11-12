@@ -77,3 +77,29 @@ Server-side choices for suppliers (also not in the spec):
 | R13 | **Closing a location or hiding a product** reads stock in a separate transaction, so a delivery saved at the same instant could slip through. | Same as the earlier probes; not locked. |
 | R14 | **Unknown product id in a delivery.** | 400 `product_not_found` (hidden, merged, rejected: `product_not_receivable`). |
 | R15 | **Error details for the IMEI conflicts** (asked for by the app). | `imei_in_stock` sends exactly `{ imei, locationName }`; `imei_sold_before` exactly `{ imei }`. The app scans each IMEI with `GET /stock/lookup?number=` for more (status, date, delivery). |
+## Receiving stock, screens (F04a, web app)
+
+Answers to these change only the screens. IDs start with W so they do not clash with the server list.
+
+| # | Question | What the build does now |
+|---|---|---|
+| W1 | **Adding a row by scanning an IMEI** (F04 §2): no endpoint maps an IMEI to a product. | The product box looks the code up as a barcode. If nothing matches and it is a valid IMEI, it says to add the phone first by name or barcode and enter its IMEIs on its row. |
+| W2 | **Unknown barcode, "quick add product without leaving the sheet"** (F04 §2). | Shows "no product has this barcode" and, for people with `add_products`, a link that opens the Add product page in a new tab so the sheet is kept. |
+| W3 | **Last cost from this supplier pre-filled** (F04 §2): the contracts carry no last cost. | Not built. Costs start empty. |
+| W4 | **Excel row paste on the grid and Enter moves to the next cell** (F04 §2). | Not built. IMEIs can be pasted per row. Rows are added by scan or typing. |
+| W5 | **Same product twice** (F04 §9.1): merge unless costs differ. | A scan or pick of a product that already has a row adds 1 to that row (also when the costs differ). Rows are never split. |
+| W6 | **Very large quantity or cost, "are you sure?"** (F04 §9.3). | Not built (the contract limits apply: quantity up to 100,000). |
+| W7 | **Free items, extra costs, US dollar suppliers** are F04b. | A supplier whose currency is USD is refused on the sheet with a message. People who only receive stock cannot see the currency (see Open questions above), so for them the server decides. |
+| W8 | **Who may change the payment rule for one delivery?** The spec does not say. | Only people who may pay suppliers (and see costs) get the "different payment rule for this delivery only" option. Others always use the supplier's rule. |
+| W9 | **Which money places may a delivery be paid from?** | The ones not hidden that are linked to the delivery's location. Changing the location resets the payment to credit. |
+| W10 | **"Paid in full" while a line has no cost** (F04 §4.1: not possible). | Refused on the screen. Part paid (up to the known cost) and credit still work. A part payment equal to the whole known cost is refused with "choose Paid in full". |
+| W11 | **Second IMEI** is optional (F04 §4.3). | Typed after a tab, comma or semicolon on the same line. It is checked like the first IMEI and repeated numbers (either of the two) are flagged. |
+| W12 | **Serial numbers:** only a length check (64) is done on the screen. | Repeated serial numbers are not flagged by the screen (the contract only names IMEIs). The server decides. |
+| W13 | **What the server sends with `imei_in_stock` and `imei_sold_before`** (the contract has no `details`). | The screen reads `details.imei`, `details.locationName` (or `details.location.name`) when present and shows "IMEI is already in stock at Shop 2". Without them it shows the plain message. Please give these errors those details. |
+| W14 | **A scanned IMEI is checked against stock at once** (T8) through the stock lookup. | In stock anywhere: refused on the spot. Sold before: kept, with a note that an owner or manager must confirm. If the lookup fails (offline) the number is kept and the save checks it again. |
+| W15 | **Entering missing costs:** the plan says see_cost_profit AND (owner, or a person the owner allowed). No such switch exists yet. | The form is shown to everyone with `see_cost_profit`; the server's refusal appears as "You are not allowed to do this". |
+| W16 | **Supplier picker "recent ones first"** (F04 §3). | Shows the first page of the supplier list in the server's order, filtered by the typed text. A new name uses the Suppliers quick add (receiving staff only). People who can manage suppliers get a link to the full Add supplier form (the quick form is refused for them, S11). |
+| W17 | **Stock screen filters:** the contract also allows a category filter. | Only a text search and a location filter are offered. |
+| W18 | **Delivery list filters** (supplier, location, dates). | Not offered; newest first with "Show more". |
+| W19 | **Offline use** (G6). | Saving needs a connection for now. The same `commandId` is kept for a retry of the same request. |
+| W20 | **Somali text** for all of receiving and Stock. | First draft, marked `TODO(translate-review)`. Needs a native speaker. |
