@@ -17,7 +17,8 @@ export function stableStringify(value: unknown): string {
  * has the same hash, a different request that reuses the id does not (G6).
  */
 export function hashCommand(operation: string, deliveryId: string | null, body: object): string {
-  const { commandId: _ignored, ...rest } = body as { commandId?: unknown };
+  const rest: Record<string, unknown> = { ...body };
+  delete rest.commandId;
   return createHash("sha256")
     .update(stableStringify({ operation, deliveryId, body: rest }))
     .digest("hex");

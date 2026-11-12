@@ -57,3 +57,22 @@ Server-side choices for suppliers (also not in the spec):
 | # | Question |
 |---|---|
 | E1 | Somali translations across the whole app are first drafts, marked `TODO(translate-review)`. A Somali-speaking person should review them. |
+
+## Receiving stock, first part (F04a, backend)
+
+| # | Question | What the build does now |
+|---|---|---|
+| R1 | **A cost that is not a whole number of cents** (10,000 for 3 pieces). | The layer keeps the line total; piece costs are the whole-cent share, with the extra cents on the first pieces, so they always add up to the total. |
+| R2 | **A line total of 0** (a free item is F04b). | Accepted as a known cost of 0. |
+| R3 | **Due date for "pay after sold, with a latest date"** and the sale based rules. | Only cash (day of delivery) and "within a time" give a due date; the other rules give none. The date is kept even if nothing is owed. |
+| R4 | **Who may enter missing costs afterwards** ("the owner, or a person the owner allowed"). | The owner, or anyone with see_cost_profit who also receives stock (so only people the owner switched on; an accountant cannot). |
+| R5 | **Drawer below zero:** only cash drawers are checked. Till, Paybill, bank and safe may go below zero (their balance is not tracked before F07). | As described. |
+| R6 | **A phone lost or damaged** that comes back, and a **serial number** received again. | Damaged or reserved counts as in stock (blocked); sold or lost needs owner or manager confirmation (`imei_sold_before`). Serials follow the same rules per product, with the IMEI error codes. Serial comparison is exact (case matters). |
+| R7 | **A cashier sending `confirmSoldBefore: true`.** | Ignored (no 403); the sold-before refusal stays. |
+| R8 | **Reusing a commandId** by another person or for another kind of command. | 409 `command_conflict`. A repeat returns the delivery as it is now (not a frozen copy of the first answer). |
+| R9 | **Supplier paid in US dollars** (F04b). | Refused: 400 `supplier_currency_not_supported` (a code added to the contract). A hidden supplier is `supplier_not_found`. |
+| R10 | **Merging a product that has stock history.** Stock records are append-only. | Refused with 409 `product_in_use` until sales and adjustments exist. |
+| R11 | **Receiving receipts of the same IMEI at two offline devices** (F04 section 8). | The second device gets `imei_in_stock` when it syncs; no owner flag is built yet. |
+| R12 | **Stock list speed:** put together in memory from stock rows and matching products. | Fine for some thousands of rows. |
+| R13 | **Closing a location or hiding a product** reads stock in a separate transaction, so a delivery saved at the same instant could slip through. | Same as the earlier probes; not locked. |
+| R14 | **Unknown product id in a delivery.** | 400 `product_not_found` (hidden, merged, rejected: `product_not_receivable`). |
