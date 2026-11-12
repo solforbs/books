@@ -5,7 +5,12 @@ import { TenantDb, type TenantTx } from "../../../common/tenancy/tenant-db";
 import { AuditService } from "../../audit/application/audit.service";
 import { auditBase, type Actor } from "../../identity/domain/actor";
 import { LocationErrors } from "../domain/location-errors";
-import { inScope, locationScopeOf, type LocationScope } from "../domain/location-scope";
+import {
+  canSeeMoney,
+  inScope,
+  locationScopeOf,
+  type LocationScope,
+} from "../domain/location-scope";
 import { MoneyPlaceLocationsRepository } from "../infrastructure/money-place-locations.repository";
 import { MoneyPlacesRepository } from "../infrastructure/money-places.repository";
 import type { MoneyPlaceRow } from "../infrastructure/tables/money-places.table";
@@ -51,7 +56,7 @@ export class UpdateMoneyPlaceUseCase {
         throw LocationErrors.moneyPlaceNotFound();
       }
       const before = await this.view.moneyPlace(tenantId, row, scope, t);
-      await this.apply(row, current, input, scope, t);
+      await this.apply(row, current, input, scope, t, canSeeMoney(actor.access));
       const fresh = (await this.places.findById(tenantId, row.id, t))!;
       return { before, moneyPlace: await this.view.moneyPlace(tenantId, fresh, scope, t) };
     });
@@ -70,6 +75,7 @@ export class UpdateMoneyPlaceUseCase {
     input: UpdateMoneyPlaceInput,
     scope: LocationScope,
     t: TenantTx,
+    showMoney: boolean,
   ): Promise<void> {
     const { locationIds, ...fields } = input;
     if (row.type === "cash_drawer" && Object.keys(input).some((k) => k !== "name")) {
@@ -81,7 +87,7 @@ export class UpdateMoneyPlaceUseCase {
     }
     if (fields.hidden === true && !row.hidden) {
       const balance = await this.balances.balanceOf(t.tenantId, row.id);
-      if (balance !== 0) throw LocationErrors.moneyPlaceNotEmpty(balance);
+      if (balance !== 0) throw LocationErrors.moneyPlaceNotEmpty(balance, showMoney);
     }
     if (locationIds !== undefined) {
       await this.locations.assertUsable(t.tenantId, locationIds, scope, t);

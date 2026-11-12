@@ -38,6 +38,18 @@ export class LedgerLinesRepository extends TenantScopedRepository<typeof ledgerL
     );
   }
 
+  /**
+   * Serialises payments from the same money places until the transaction ends (sorted ids, so
+   * no deadlock): the balance read after the lock cannot be changed by another payment.
+   */
+  async lockMoneyPlaces(tenantId: string, ids: string[], within: TenantTx): Promise<void> {
+    for (const id of [...new Set(ids)].sort()) {
+      await within.tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`money-place:${tenantId}:${id}`}, 0))`,
+      );
+    }
+  }
+
   /** Sum of the signed KES amounts per money place (debits in, credits out). */
   async moneyPlaceSums(
     tenantId: string,

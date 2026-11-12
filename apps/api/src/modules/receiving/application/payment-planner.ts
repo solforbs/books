@@ -41,6 +41,7 @@ export class PaymentPlanner {
     const paid = payments.reduce((sum, p) => sum + p.amountCents, 0);
     if (paid > knownTotalCents) throw DeliveryErrors.paymentExceedsTotal(knownTotalCents, paid);
 
+    await this.ledger.lockMoneyPlaces(t, ids);
     const balances = await this.ledger.moneyPlaceBalances(t.tenantId, ids, t);
     const running = new Map(balances);
     return payments.map((p) => {

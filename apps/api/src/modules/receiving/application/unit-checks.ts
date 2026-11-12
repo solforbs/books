@@ -9,7 +9,11 @@ import {
   type UnitNumbers,
 } from "../../inventory/domain/unit-numbers";
 import { LocationsService } from "../../locations/application/locations.service";
+import { inScope, type LocationScope } from "../../locations/domain/location-scope";
 import { DeliveryErrors } from "../domain/delivery-errors";
+
+/** The most IMEI/serial units one request may carry (keeps one request bounded). */
+export const MAX_UNITS_PER_REQUEST = 5000;
 
 /** The unit numbers typed for one product (one line of a delivery, or of a completion). */
 export interface UnitGroup {
@@ -35,7 +39,16 @@ export class UnitChecks {
    * Returns the cleaned numbers of each group, or throws the first problem. `mayConfirm` is
    * true only when the person is an owner or manager AND sent `confirmSoldBefore`.
    */
-  async prepare(t: TenantTx, groups: UnitGroup[], mayConfirm: boolean): Promise<UnitNumbers[][]> {
+  async prepare(
+    t: TenantTx,
+    groups: UnitGroup[],
+    mayConfirm: boolean,
+    scope: LocationScope,
+  ): Promise<UnitNumbers[][]> {
+    const total = groups.reduce((sum, g) => sum + g.inputs.length, 0);
+    if (total > MAX_UNITS_PER_REQUEST) {
+      throw DeliveryErrors.quantityTooLarge({ max: MAX_UNITS_PER_REQUEST });
+    }
     const prepared = groups.map((g) => {
       const result = prepareUnits(g.trackingType, g.inputs);
       if (result.ok) return result.units;
@@ -58,18 +71,24 @@ export class UnitChecks {
       .map((g, i) => ({ productId: g.productId, units: prepared[i]! }))
       .filter((g) => g.units.length > 0);
     // Lock first, then look: two requests receiving the same phone cannot both pass.
-    await this.stock.lockUnitNumbers(t, checked);
+    if (checked.length > 0) await this.stock.lockUnitNumbers(t);
     const conflicts = (
       await Promise.all(checked.map((g) => this.stock.conflictsFor(t, g.productId, g.units)))
     ).flat();
 
     const inStock = conflicts.find((c) => c.kind === "in_stock");
     if (inStock) {
-      const names = await this.locations.namesOf(t.tenantId, [inStock.unit.locationId], t);
-      throw DeliveryErrors.imeiInStock({
-        imei: inStock.number,
-        locationName: names.get(inStock.unit.locationId) ?? null,
-      });
+      // The shop name is only told to people who may see that location.
+      const where = inStock.unit.locationId;
+      const names = inScope(scope, where)
+        ? await this.locations.namesOf(t.tenantId, [where], t)
+        : new Map<string, string>();
+      const locationName = names.get(where);
+      throw DeliveryErrors.imeiInStock(
+        locationName === undefined
+          ? { imei: inStock.number }
+          : { imei: inStock.number, locationName },
+      );
     }
     const soldBefore = conflicts.find((c) => c.kind === "sold_before");
     if (soldBefore && !mayConfirm) {

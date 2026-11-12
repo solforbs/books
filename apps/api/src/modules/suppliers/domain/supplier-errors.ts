@@ -15,8 +15,13 @@ export const SupplierErrors = {
     conflict("similar_suppliers", "Similar suppliers exist; confirm they are different", {
       suppliers,
     }),
-  hasBalance: (balance: number) =>
-    conflict("supplier_has_balance", "Settle the balance with this supplier first", { balance }),
+  hasBalance: (balance: number, showMoney = true) =>
+    conflict(
+      "supplier_has_balance",
+      "Settle the balance with this supplier first",
+      // What is owed is shown only to people who may see costs (see_cost_profit).
+      showMoney ? { balance } : undefined,
+    ),
   useFullForm: () =>
     badRequest("use_full_form", "People who can manage suppliers add them with the full form"),
   notWaiting: () => conflict("not_waiting", "Only a waiting supplier can be approved"),

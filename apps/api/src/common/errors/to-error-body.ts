@@ -1,7 +1,11 @@
 import { HttpException } from "@nestjs/common";
 import { ThrottlerException } from "@nestjs/throttler";
 import type { ApiError } from "@books/shared";
-import { PG_INVALID_TEXT_ENCODING, pgErrorCode } from "../database/pg-errors";
+import {
+  PG_INVALID_TEXT_ENCODING,
+  PG_NUMERIC_OUT_OF_RANGE,
+  pgErrorCode,
+} from "../database/pg-errors";
 import { AppError } from "./app-error";
 
 export interface ErrorResult {
@@ -51,6 +55,10 @@ export function toErrorResult(err: unknown): ErrorResult {
   if (PG_INVALID_TEXT_ENCODING.includes(pgErrorCode(err) ?? "")) {
     // Text with a NUL character cannot be stored; one central answer for every module.
     const details = [{ path: "", message: "invalid_text" }];
+    return { status: 400, body: body("validation_failed", "Request validation failed", details) };
+  }
+  if (pgErrorCode(err) === PG_NUMERIC_OUT_OF_RANGE) {
+    const details = [{ path: "", message: "number_out_of_range" }];
     return { status: 400, body: body("validation_failed", "Request validation failed", details) };
   }
   if (err instanceof ThrottlerException) {

@@ -2,7 +2,10 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { isUuid } from "../../../common/database/uuid";
 import { TenantDb, type TenantTx } from "../../../common/tenancy/tenant-db";
-import { TenantScopedRepository } from "../../../common/tenancy/tenant-scoped.repository";
+import {
+  TenantScopedRepository,
+  type TenantInsert,
+} from "../../../common/tenancy/tenant-scoped.repository";
 import { stockUnits, type StockUnitRow } from "./tables/stock-units.table";
 
 @Injectable()
@@ -24,16 +27,35 @@ export class StockUnitsRepository extends TenantScopedRepository<typeof stockUni
   }
 
   /**
-   * Serialises two requests that receive the same number: one advisory lock per number until
-   * the transaction ends, taken in sorted order so several numbers cannot deadlock. IMEIs are
-   * business-wide; a serial is per product.
+   * Serialises two requests that receive unit numbers in the same business: ONE advisory lock
+   * per business, held until the transaction ends. A lock per IMEI would need thousands of
+   * lock slots for a big delivery and can exhaust the PostgreSQL lock table. The partial unique
+   * indexes stay as the second guard.
    */
-  async lockNumbers(tenantId: string, keys: string[], within: TenantTx): Promise<void> {
-    for (const key of [...new Set(keys)].sort()) {
-      await within.tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${`unit:${tenantId}:${key}`}, 0))`,
+  async lockUnitNumbers(tenantId: string, within: TenantTx): Promise<void> {
+    await within.tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`unit-numbers:${tenantId}`}, 0))`,
+    );
+  }
+
+  /** Inserts many units in a few statements (chunks keep the parameter count low). */
+  async createMany(
+    tenantId: string,
+    rows: TenantInsert<typeof stockUnits>[],
+    within: TenantTx,
+  ): Promise<StockUnitRow[]> {
+    const created: StockUnitRow[] = [];
+    for (let i = 0; i < rows.length; i += 1000) {
+      const chunk = rows.slice(i, i + 1000).map((r) => ({ ...r, tenantId }));
+      created.push(
+        ...(await this.run(
+          tenantId,
+          (tx) => tx.insert(stockUnits).values(chunk).returning(),
+          within,
+        )),
       );
     }
+    return created;
   }
 
   /**

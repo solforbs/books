@@ -112,7 +112,8 @@ export class DeliveryWriter {
       locationId: d.locationId,
       sourceType: "delivery",
       sourceId: delivery.id,
-      commandId: d.key.commandId,
+      // Namespaced, so the ledger key can never clash with another module command ids.
+      commandId: `receiving:create:${d.key.commandId}`,
       lines: entry,
     });
     return delivery;

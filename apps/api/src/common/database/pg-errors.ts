@@ -4,6 +4,8 @@ export const PG_FOREIGN_KEY_VIOLATION = "23503";
 export const PG_CHECK_VIOLATION = "23514";
 /** A NUL character in text (22021) or in a JSON/text escape (22P05): the input is invalid. */
 export const PG_INVALID_TEXT_ENCODING = ["22021", "22P05"];
+/** A number too big for its column (22003): the input is invalid, never a 500. */
+export const PG_NUMERIC_OUT_OF_RANGE = "22003";
 export const PG_INSUFFICIENT_PRIVILEGE = "42501";
 
 const SQLSTATE_RE = /^[0-9A-Z]{5}$/;

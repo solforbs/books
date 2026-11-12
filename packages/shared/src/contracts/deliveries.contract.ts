@@ -178,6 +178,8 @@ export const DELIVERY_ERROR_CODES = [
   "command_conflict",
   /** The supplier is paid in US dollars (F04b); only KES suppliers can be received from now. */
   "supplier_currency_not_supported",
+  /** A line is above 1,000,000 pieces, or one request carries more than 5,000 IMEI/serial units. */
+  "quantity_too_large",
   "product_not_receivable",
   "invalid_pack_unit",
   "invalid_imei",

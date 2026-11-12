@@ -78,7 +78,7 @@ export class EnterCostsUseCase {
         locationId: row.locationId,
         sourceType: "delivery",
         sourceId: row.id,
-        commandId: key.commandId,
+        commandId: `receiving:costs:${key.commandId}`,
         lines: [
           { account: "inventory", amountCents: total },
           { account: "supplier_payable", supplierId: row.supplierId, amountCents: -total },

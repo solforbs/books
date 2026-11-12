@@ -19,14 +19,25 @@ export const LocationErrors = {
   locationNotFound: (status = 404, details?: { locationIds: string[] }) =>
     err(status, "location_not_found", "Location not found", details),
   /** `details` say what is left, e.g. `{ stockQuantity: 23, cashDrawerCents: 450000 }`. */
-  locationNotEmpty: (details: LocationContents) =>
-    err(409, "location_not_empty", "Location still holds stock or cash", details),
+  locationNotEmpty: (details: LocationContents, showMoney = true) =>
+    err(
+      409,
+      "location_not_empty",
+      "Location still holds stock or cash",
+      // The cash amount is shown only to people who may see money (see_cost_profit).
+      showMoney ? details : { stockQuantity: details.stockQuantity },
+    ),
   locationClosed: () => err(409, "location_closed", "Location is closed; reopen it first"),
   lastLocation: () =>
     err(409, "last_location", "A business needs at least one open location; add another first"),
   moneyPlaceNotFound: () => err(404, "money_place_not_found", "Money place not found"),
-  moneyPlaceNotEmpty: (balanceCents: number) =>
-    err(409, "money_place_not_empty", "Money place balance is not zero", { balanceCents }),
+  moneyPlaceNotEmpty: (balanceCents: number, showMoney = true) =>
+    err(
+      409,
+      "money_place_not_empty",
+      "Money place balance is not zero",
+      showMoney ? { balanceCents } : undefined,
+    ),
   invalidSettlesTo: () =>
     err(400, "invalid_settles_to", "Money can only settle to a bank account of this business"),
   cashDrawerFixed: () =>

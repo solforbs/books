@@ -103,3 +103,18 @@ Answers to these change only the screens. IDs start with W so they do not clash 
 | W18 | **Delivery list filters** (supplier, location, dates). | Not offered; newest first with "Show more". |
 | W19 | **Offline use** (G6). | Saving needs a connection for now. The same `commandId` is kept for a retry of the same request. |
 | W20 | **Somali text** for all of receiving and Stock. | First draft, marked `TODO(translate-review)`. Needs a native speaker. |
+
+### F04a security review follow-ups
+
+| # | Question | What the build does now |
+|---|---|---|
+| R16 | **Limits:** one line up to 1,000,000 pieces, one request up to 5,000 IMEI/serial units (`quantity_too_large`). Right numbers? | As described. IMEI checks take one lock per business (deliveries with units in one business run one after the other). |
+| R17 | **Money in errors:** the supplier balance (`supplier_has_balance`), the drawer cash (`location_not_empty`) and the balance of a money place (`money_place_not_empty`) are sent only to people with see_cost_profit. | Others get the code only (location: the stock quantity stays). |
+| R18 | **Shop name in `imei_in_stock`** is left out when the person cannot see that location. | As described. |
+| R19 | **Ledger command keys** are stored as `receiving:create:<id>` and `receiving:costs:<id>`. | Done. |
+| R20 | **L1 (known follow-up):** not built, to be handled later. | See the review notes. |
+| R21 | **L3 (known follow-up):** not built, to be handled later. | See the review notes. |
+| R22 | **L4 (known follow-up):** not built, to be handled later. | See the review notes. |
+| R23 | **L6 (known follow-up):** not built, to be handled later. | See the review notes. |
+| R24 | **L8 (known follow-up):** not built, to be handled later. | See the review notes. |
+| R25 | **A repeated create** is answered only if the person can still see the delivery location (404-style `location_not_found` otherwise); no automated test for this yet. | As described. |

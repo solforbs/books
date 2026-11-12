@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { normalizeImei } from "@books/shared";
 import type { TenantTx } from "../../../common/tenancy/tenant-db";
-import { splitCost } from "../domain/cost-split";
-import { classifyConflicts, lockKeys, type UnitConflict } from "../domain/unit-conflicts";
+import { unitShare } from "../domain/cost-split";
+import { classifyConflicts, type UnitConflict } from "../domain/unit-conflicts";
 import type { TrackingKind, UnitNumbers } from "../domain/unit-numbers";
 import {
   StockAggregatesRepository,
@@ -102,29 +102,21 @@ export class StockService {
   ): Promise<StockUnitRow[]> {
     if (numbers.length === 0) return [];
     // Each piece takes its own slot of the split cost, so unit costs add up to the line total.
-    const costs =
-      layer.costTotalCents === null
-        ? null
-        : splitCost(layer.costTotalCents, layer.receivedQuantity);
-    const created: StockUnitRow[] = [];
-    for (const [i, unit] of numbers.entries()) {
-      created.push(
-        await this.units.create(
-          t.tenantId,
-          {
-            productId: layer.productId,
-            locationId: layer.locationId,
-            layerId: layer.id,
-            imei: unit.imei,
-            imei2: unit.imei2,
-            serial: unit.serial,
-            status: "in_stock",
-            costCents: costs ? costs[existing + i]! : null,
-          },
-          t,
-        ),
-      );
-    }
+    const total = layer.costTotalCents;
+    const created = await this.units.createMany(
+      t.tenantId,
+      numbers.map((unit, i) => ({
+        productId: layer.productId,
+        locationId: layer.locationId,
+        layerId: layer.id,
+        imei: unit.imei,
+        imei2: unit.imei2,
+        serial: unit.serial,
+        status: "in_stock" as const,
+        costCents: total === null ? null : unitShare(total, layer.receivedQuantity, existing + i),
+      })),
+      t,
+    );
     await this.movements.append(
       t.tenantId,
       created.map((u) => ({
@@ -143,16 +135,9 @@ export class StockService {
     return created;
   }
 
-  /** Locks the numbers of these units until the transaction ends (call before checking them). */
-  lockUnitNumbers(
-    t: TenantTx,
-    groups: { productId: string; units: UnitNumbers[] }[],
-  ): Promise<void> {
-    return this.units.lockNumbers(
-      t.tenantId,
-      groups.flatMap((g) => lockKeys(g.productId, g.units)),
-      t,
-    );
+  /** Locks unit-number checks of this business until the transaction ends (call before checking). */
+  lockUnitNumbers(t: TenantTx): Promise<void> {
+    return this.units.lockUnitNumbers(t.tenantId, t);
   }
 
   /** What stops these numbers from being received as new stock (empty = nothing). */
@@ -174,10 +159,12 @@ export class StockService {
   async setLayerCost(t: TenantTx, layer: StockLayerRow, totalCents: number): Promise<void> {
     await this.layers.updateById(t.tenantId, layer.id, { costTotalCents: totalCents }, t);
     const units = await this.units.forLayers(t.tenantId, [layer.id], t);
-    const costs = splitCost(totalCents, layer.receivedQuantity);
     await this.units.setCosts(
       t.tenantId,
-      units.map((u, i) => ({ id: u.id, costCents: costs[i]! })),
+      units.map((u, i) => ({
+        id: u.id,
+        costCents: unitShare(totalCents, layer.receivedQuantity, i),
+      })),
       t,
     );
   }

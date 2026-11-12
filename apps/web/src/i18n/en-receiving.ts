@@ -221,6 +221,8 @@ export const enReceivingErrors = {
   delivery_not_found: "This delivery was not found.",
   supplier_currency_not_supported:
     "Deliveries from suppliers paid in US dollars are not available yet.",
+  quantity_too_large:
+    "This is too many pieces or numbers for one delivery. Split it into smaller deliveries.",
   command_conflict:
     "This delivery was already saved with different details. Check the deliveries list before trying again.",
   product_not_receivable:

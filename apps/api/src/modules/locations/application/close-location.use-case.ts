@@ -5,7 +5,7 @@ import { AuditService } from "../../audit/application/audit.service";
 import { MembersService } from "../../identity/application/members.service";
 import { auditBase, type Actor } from "../../identity/domain/actor";
 import { LocationErrors } from "../domain/location-errors";
-import { inScope, locationScopeOf } from "../domain/location-scope";
+import { canSeeMoney, inScope, locationScopeOf } from "../domain/location-scope";
 import { LocationsRepository } from "../infrastructure/locations.repository";
 import { isEmpty, LocationContentsProbe } from "./contents-probes";
 import { LocationView } from "./location-view";
@@ -45,7 +45,8 @@ export class CloseLocationUseCase {
       }
       if (open.length <= 1) throw LocationErrors.lastLocation();
       const contents = await this.contents.contentsOf(tenantId, row.id);
-      if (!isEmpty(contents)) throw LocationErrors.locationNotEmpty(contents);
+      if (!isEmpty(contents))
+        throw LocationErrors.locationNotEmpty(contents, canSeeMoney(actor.access));
 
       await this.locations.updateById(tenantId, row.id, { status: "closed" }, t);
       const unassigned = await this.members.unassignLocation(t, row.id);

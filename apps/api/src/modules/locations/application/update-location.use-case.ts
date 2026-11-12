@@ -5,7 +5,7 @@ import { TenantDb } from "../../../common/tenancy/tenant-db";
 import { AuditService } from "../../audit/application/audit.service";
 import { auditBase, type Actor } from "../../identity/domain/actor";
 import { LocationErrors } from "../domain/location-errors";
-import { inScope, locationScopeOf } from "../domain/location-scope";
+import { canSeeMoney, inScope, locationScopeOf } from "../domain/location-scope";
 import { LocationsRepository } from "../infrastructure/locations.repository";
 import { CashDrawers } from "./cash-drawers";
 import { LocationView } from "./location-view";
@@ -39,7 +39,8 @@ export class UpdateLocationUseCase {
       await this.locations.updateById(tenantId, row.id, input, t);
       const updated = { ...row, ...input };
       if (input.canSell === true && !row.canSell) await this.drawers.ensure(updated, t);
-      if (input.canSell === false && row.canSell) await this.drawers.hide(updated, t);
+      if (input.canSell === false && row.canSell)
+        await this.drawers.hide(updated, t, canSeeMoney(actor.access));
       if (input.name !== undefined && input.name !== row.name) {
         await this.drawers.rename(updated, t);
       }

@@ -17,6 +17,9 @@ export interface ResolvedLine {
   pieces: number;
 }
 
+/** One line may not be bigger than this many pieces (a typo guard and an overflow guard). */
+export const MAX_PIECES_PER_LINE = 1_000_000;
+
 const RECEIVABLE = ["active", "waiting"];
 
 /** Looks up and checks the supplier and the products named in a delivery request. */
@@ -70,7 +73,11 @@ export class DeliveryIntake {
           throw DeliveryErrors.invalidPackUnit(product.id, input.packUnitId);
         }
       }
-      return { input, product, pack, pieces: input.quantity * (pack?.size ?? 1) };
+      const pieces = input.quantity * (pack?.size ?? 1);
+      // Also keeps the count far from the integer limit of the database (never a 500).
+      if (pieces > MAX_PIECES_PER_LINE)
+        throw DeliveryErrors.quantityTooLarge({ max: MAX_PIECES_PER_LINE });
+      return { input, product, pack, pieces };
     });
   }
 }

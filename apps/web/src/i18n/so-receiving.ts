@@ -235,6 +235,8 @@ export const soReceivingErrors: Record<keyof typeof enReceivingErrors, string> =
   // TODO(translate-review)
   supplier_currency_not_supported:
     "Keenisyada ka timaadda alaab-qeybiyeyaasha lacagta doolarka ku bixiya weli lama heli karo.",
+  // TODO(translate-review)
+  quantity_too_large: "Tani waa tiro aad u badan hal keenis. U kala qaybi keenisyo yaryar.",
   command_conflict:
     "Keenistan hore ayaa loo keydiyay faahfaahin kale. Hubi liiska keenisyada kahor intaadan mar kale isku dayin.",
   product_not_receivable:

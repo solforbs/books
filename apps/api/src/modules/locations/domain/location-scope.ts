@@ -1,3 +1,4 @@
+import { effectivePermissions } from "@books/shared";
 import type { TenantAccessContext } from "../../identity/domain/auth-context";
 import { seesAllLocations } from "../../identity/domain/auth-context";
 
@@ -36,4 +37,9 @@ export function isValidMoneyPlaceNumber(type: string, value: string | null | und
 /** Only M-Pesa places settle to a bank (F02: "Paybill linked to a bank"). */
 export function canSettle(type: string): boolean {
   return type === "mpesa_till" || type === "mpesa_paybill";
+}
+
+/** Balances and costs are only shown to people with see_cost_profit. */
+export function canSeeMoney(access: TenantAccessContext): boolean {
+  return effectivePermissions(access.role, access.permissionOverrides).has("see_cost_profit");
 }

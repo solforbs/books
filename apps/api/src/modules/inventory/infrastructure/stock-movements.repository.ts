@@ -22,7 +22,10 @@ export class StockMovementsRepository extends TenantScopedRepository<typeof stoc
     await this.run(
       tenantId,
       async (tx) => {
-        await tx.insert(stockMovements).values(rows.map((r) => ({ ...r, tenantId })));
+        for (let i = 0; i < rows.length; i += 1000) {
+          const chunk = rows.slice(i, i + 1000).map((r) => ({ ...r, tenantId }));
+          await tx.insert(stockMovements).values(chunk);
+        }
       },
       within,
     );

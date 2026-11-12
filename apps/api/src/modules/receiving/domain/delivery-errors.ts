@@ -34,12 +34,18 @@ export const DeliveryErrors = {
   duplicateInDelivery: (number: string) =>
     badRequest("duplicate_imei_in_delivery", "The same number appears twice", { number }),
   /** Details are exactly what the app shows: the number and the place it is in (F04 T8). */
-  imeiInStock: (details: { imei: string; locationName: string | null }) =>
+  imeiInStock: (details: { imei: string; locationName?: string }) =>
     conflict("imei_in_stock", "This number is already in stock", details),
   imeiSoldBefore: (details: { imei: string }) =>
     conflict(
       "imei_sold_before",
       "This number was sold before; an owner or manager must confirm",
+      details,
+    ),
+  quantityTooLarge: (details: { max: number }) =>
+    badRequest(
+      "quantity_too_large",
+      "This is too many pieces or numbers for one delivery",
       details,
     ),
   imeiCountMismatch: (details: { productId: string; pieces: number; units: number }) =>

@@ -60,6 +60,11 @@ export class LedgerService {
     return row.id;
   }
 
+  /** Waits for other payments from these money places, then holds them until the end. */
+  lockMoneyPlaces(t: TenantTx, ids: string[]): Promise<void> {
+    return this.lines.lockMoneyPlaces(t.tenantId, ids, t);
+  }
+
   /** Balance in cents of each money place (places with no lines are 0). */
   async moneyPlaceBalances(
     tenantId: string,

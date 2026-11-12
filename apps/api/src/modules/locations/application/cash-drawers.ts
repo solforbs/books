@@ -44,12 +44,15 @@ export class CashDrawers {
   }
 
   /** Selling switched off: the drawer must be empty, then it is hidden. */
-  async hide(location: LocationRow, t: TenantTx): Promise<void> {
+  async hide(location: LocationRow, t: TenantTx, showMoney = true): Promise<void> {
     const drawer = (await this.places.drawersOf(t.tenantId, [location.id], t)).get(location.id);
     if (!drawer || drawer.hidden) return;
     const balance = await this.balances.balanceOf(t.tenantId, drawer.id);
     if (balance !== 0)
-      throw LocationErrors.locationNotEmpty({ stockQuantity: 0, cashDrawerCents: balance });
+      throw LocationErrors.locationNotEmpty(
+        { stockQuantity: 0, cashDrawerCents: balance },
+        showMoney,
+      );
     await this.places.updateById(t.tenantId, drawer.id, { hidden: true }, t);
   }
 

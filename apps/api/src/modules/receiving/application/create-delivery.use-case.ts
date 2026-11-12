@@ -5,7 +5,8 @@ import { TenantDb } from "../../../common/tenancy/tenant-db";
 import { AuditService } from "../../audit/application/audit.service";
 import { auditBase, type Actor } from "../../identity/domain/actor";
 import { LocationsService } from "../../locations/application/locations.service";
-import { locationScopeOf } from "../../locations/domain/location-scope";
+import { LocationErrors } from "../../locations/domain/location-errors";
+import { inScope, locationScopeOf } from "../../locations/domain/location-scope";
 import { DeliveryErrors } from "../domain/delivery-errors";
 import { dueDateFor } from "../domain/due-date";
 import { hashCommand } from "../domain/request-hash";
@@ -13,6 +14,7 @@ import { DeliveriesRepository } from "../infrastructure/deliveries.repository";
 import { assertPermission, canSeeCosts, isOwnerOrManager } from "./access";
 import { CommandGuard, type CommandKey } from "./command-guard";
 import { DeliveryIntake } from "./delivery-intake";
+import { rethrowUnitConflict } from "./unit-conflict-error";
 import { DeliveryView } from "./delivery-view";
 import { DeliveryWriter } from "./delivery-writer";
 import { PaymentPlanner } from "./payment-planner";
@@ -61,70 +63,75 @@ export class CreateDeliveryUseCase {
       userId,
     };
     const confirmed = body.confirmSoldBefore && isOwnerOrManager(access);
-    const result = await this.tenantDb.transaction(tenantId, async (t) => {
-      const earlier = await this.guard.begin(t, key);
-      if (earlier) {
-        const row = await this.deliveries.findById(tenantId, earlier, t);
-        return { row: row!, replayed: true, pieces: 0, known: 0, paid: 0, incomplete: 0 };
-      }
-      const scope = locationScopeOf(access);
-      await this.locations.assertUsable(tenantId, [body.locationId], scope, t);
-      const { supplier, rule } = await this.intake.supplier(t, body.supplierId, body.paymentRule);
-      const lines = await this.intake.lines(t, body.lines);
-      const units = await this.unitChecks.prepare(
-        t,
-        lines.map((l) => ({
-          productId: l.product.id,
-          trackingType: l.product.trackingType,
-          inputs: l.input.units ?? [],
-        })),
-        confirmed,
-      );
-      let incomplete = 0;
-      for (const [i, line] of lines.entries()) {
-        if (line.product.trackingType === "quantity") continue;
-        const count = units[i]!.length;
-        const short = count < line.pieces;
-        if (count > line.pieces || (short && !body.allowIncomplete)) {
-          throw DeliveryErrors.imeiCountMismatch({
-            productId: line.product.id,
-            pieces: line.pieces,
-            units: count,
-          });
+    const result = await this.tenantDb
+      .transaction(tenantId, async (t) => {
+        const scope = locationScopeOf(access);
+        const earlier = await this.guard.begin(t, key);
+        if (earlier) {
+          const row = await this.deliveries.findById(tenantId, earlier, t);
+          // A repeat is only answered to someone who may still see that location.
+          if (!row || !inScope(scope, row.locationId)) throw LocationErrors.locationNotFound();
+          return { row: row!, replayed: true, pieces: 0, known: 0, paid: 0, incomplete: 0 };
         }
-        incomplete += line.pieces - count;
-      }
-      const known = lines.reduce((sum, l) => sum + (l.input.lineTotalCents ?? 0), 0);
-      const payments = await this.planner.plan(
-        t,
-        body.payments,
-        known,
-        scope,
-        isOwnerOrManager(access),
-      );
-      const row = await this.writer.write(t, {
-        userId,
-        supplierId: supplier.id,
-        locationId: body.locationId,
-        invoiceNumber: body.invoiceNumber ?? null,
-        note: body.note ?? null,
-        rule,
-        dueDate: dueDateFor(rule, new Date()),
-        lines,
-        units,
-        payments,
-        key,
-      });
-      await this.guard.record(t, key, row.id);
-      return {
-        row,
-        replayed: false,
-        pieces: lines.reduce((sum, l) => sum + l.pieces, 0),
-        known,
-        paid: payments.reduce((sum, p) => sum + p.amountCents, 0),
-        incomplete,
-      };
-    });
+        await this.locations.assertUsable(tenantId, [body.locationId], scope, t);
+        const { supplier, rule } = await this.intake.supplier(t, body.supplierId, body.paymentRule);
+        const lines = await this.intake.lines(t, body.lines);
+        const units = await this.unitChecks.prepare(
+          t,
+          lines.map((l) => ({
+            productId: l.product.id,
+            trackingType: l.product.trackingType,
+            inputs: l.input.units ?? [],
+          })),
+          confirmed,
+          scope,
+        );
+        let incomplete = 0;
+        for (const [i, line] of lines.entries()) {
+          if (line.product.trackingType === "quantity") continue;
+          const count = units[i]!.length;
+          const short = count < line.pieces;
+          if (count > line.pieces || (short && !body.allowIncomplete)) {
+            throw DeliveryErrors.imeiCountMismatch({
+              productId: line.product.id,
+              pieces: line.pieces,
+              units: count,
+            });
+          }
+          incomplete += line.pieces - count;
+        }
+        const known = lines.reduce((sum, l) => sum + (l.input.lineTotalCents ?? 0), 0);
+        const payments = await this.planner.plan(
+          t,
+          body.payments,
+          known,
+          scope,
+          isOwnerOrManager(access),
+        );
+        const row = await this.writer.write(t, {
+          userId,
+          supplierId: supplier.id,
+          locationId: body.locationId,
+          invoiceNumber: body.invoiceNumber ?? null,
+          note: body.note ?? null,
+          rule,
+          dueDate: dueDateFor(rule, new Date()),
+          lines,
+          units,
+          payments,
+          key,
+        });
+        await this.guard.record(t, key, row.id);
+        return {
+          row,
+          replayed: false,
+          pieces: lines.reduce((sum, l) => sum + l.pieces, 0),
+          known,
+          paid: payments.reduce((sum, p) => sum + p.amountCents, 0),
+          incomplete,
+        };
+      })
+      .catch(rethrowUnitConflict);
 
     if (!result.replayed) {
       await this.audit.record({

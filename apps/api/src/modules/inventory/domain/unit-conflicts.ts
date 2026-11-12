@@ -46,11 +46,3 @@ export function classifyConflicts(
   }
   return found.sort((a, b) => Number(b.kind === "in_stock") - Number(a.kind === "in_stock"));
 }
-
-/** The advisory-lock keys of a set of units: IMEIs per business, serials per product. */
-export function lockKeys(productId: string, units: UnitNumbers[]): string[] {
-  return units.flatMap((u) => [
-    ...[u.imei, u.imei2].filter((v): v is string => v !== null).map((v) => `imei:${v}`),
-    ...(u.serial !== null ? [`serial:${productId}:${u.serial}`] : []),
-  ]);
-}

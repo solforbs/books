@@ -5,7 +5,7 @@ import { AuditService } from "../../audit/application/audit.service";
 import { auditBase, type Actor } from "../../identity/domain/actor";
 import { SupplierErrors } from "../domain/supplier-errors";
 import { SuppliersRepository } from "../infrastructure/suppliers.repository";
-import { assertPermission } from "./access";
+import { assertPermission, hasPermission } from "./access";
 import { SupplierBalanceProbe } from "./supplier-balance-probe";
 import { SupplierLock } from "./supplier-lock";
 import { SupplierView } from "./supplier-view";
@@ -40,7 +40,8 @@ export class HideSupplierUseCase {
         };
       if (row.status === "waiting") throw SupplierErrors.notActive();
       const balance = await this.probe.balanceOf(tenantId, id);
-      if (balance !== 0) throw SupplierErrors.hasBalance(balance);
+      if (balance !== 0)
+        throw SupplierErrors.hasBalance(balance, hasPermission(actor.access, "see_cost_profit"));
       await this.suppliers.updateById(tenantId, id, { status: "hidden", hiddenFrom: "active" }, t);
       const hidden = (await this.suppliers.findById(tenantId, id, t))!;
       return {
