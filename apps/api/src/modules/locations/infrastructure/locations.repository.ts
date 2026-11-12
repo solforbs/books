@@ -16,6 +16,13 @@ export class LocationsRepository extends TenantScopedRepository<typeof locations
     return this.find(tenantId, undefined, { orderBy: [asc(locations.createdAt)] }, within);
   }
 
+  /** The locations among `ids` (any status). */
+  findManyByIds(tenantId: string, ids: string[], within?: TenantTx) {
+    const valid = ids.filter(isUuid);
+    if (valid.length === 0) return Promise.resolve([]);
+    return this.find(tenantId, inArray(locations.id, valid), {}, within);
+  }
+
   /** The open locations among `ids` (unknown or malformed ids are simply absent). */
   async findOpenByIds(tenantId: string, ids: string[], within?: TenantTx) {
     const valid = ids.filter(isUuid);

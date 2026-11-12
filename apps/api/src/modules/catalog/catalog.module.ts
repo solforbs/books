@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuditModule } from "../audit/audit.module";
 import { IdentityModule } from "../identity/identity.module";
+import { InventoryModule } from "../inventory/inventory.module";
 import { LocationsModule } from "../locations/locations.module";
 import { CategoriesController } from "./api/categories.controller";
 import { ProductsPartsController } from "./api/products-parts.controller";
@@ -22,6 +23,7 @@ import { ListProductsUseCase } from "./application/list-products.use-case";
 import { MergeProductUseCase } from "./application/merge-product.use-case";
 import { ProductChecks } from "./application/product-checks";
 import { ProductConflicts } from "./application/product-conflicts";
+import { ProductDirectory } from "./application/product-directory";
 import { ProductEditor } from "./application/product-editor";
 import { ProductHistoryUseCase } from "./application/product-history.use-case";
 import { ProductLock } from "./application/product-lock";
@@ -44,7 +46,7 @@ import { ProductsRepository } from "./infrastructure/products.repository";
 
 /** The product list: categories, products, barcodes, packs, approval, history (F01). */
 @Module({
-  imports: [IdentityModule, AuditModule, LocationsModule],
+  imports: [IdentityModule, AuditModule, LocationsModule, InventoryModule],
   controllers: [
     CategoriesController,
     ProductsReadController,
@@ -60,9 +62,10 @@ import { ProductsRepository } from "./infrastructure/products.repository";
     LocationPricesRepository,
     HistoryRepository,
     BarcodeSequencesRepository,
-    // Extension points: stock (F04) and sales (F06) replace these.
+    // Stock-aware (inventory); sales (F06) will add to these.
     ProductUsageProbe,
     ProductMergeMover,
+    ProductDirectory,
     ProductView,
     ProductLock,
     ProductChecks,
@@ -90,5 +93,6 @@ import { ProductsRepository } from "./infrastructure/products.repository";
     RetirePackUseCase,
     ProductHistoryUseCase,
   ],
+  exports: [ProductDirectory],
 })
 export class CatalogModule {}

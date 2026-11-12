@@ -176,6 +176,8 @@ export type DeliveriesResponse = z.infer<typeof deliveriesResponseSchema>;
 export const DELIVERY_ERROR_CODES = [
   "delivery_not_found",
   "command_conflict",
+  /** The supplier is paid in US dollars (F04b); only KES suppliers can be received from now. */
+  "supplier_currency_not_supported",
   "product_not_receivable",
   "invalid_pack_unit",
   "invalid_imei",

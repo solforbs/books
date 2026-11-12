@@ -1,29 +1,41 @@
 import { Injectable } from "@nestjs/common";
+import { LedgerService } from "../../ledger/application/ledger.service";
+import { StockService } from "../../inventory/application/stock.service";
 import type { LocationContents } from "../domain/location-errors";
+import { MoneyPlacesRepository } from "../infrastructure/money-places.repository";
 
 /**
- * EXTENSION POINT (F02 §3 "Closing a location"): how much stock and cash a
- * location still holds. Stock arrives with F04 and cash balances with F07/F11;
- * until then nothing can be held, so the default reports zero. Those slices
- * replace this provider (`{ provide: LocationContentsProbe, useClass: ... }`)
- * with one that asks the inventory and money modules.
+ * F02 section 3 "Closing a location": how much stock and cash a location still holds. Stock
+ * is counted from the inventory module (pieces on hand plus pieces still waiting for their
+ * IMEI) and cash from the ledger balance of the location cash drawer.
  */
 @Injectable()
 export class LocationContentsProbe {
-  async contentsOf(_tenantId: string, _locationId: string): Promise<LocationContents> {
-    return { stockQuantity: 0, cashDrawerCents: 0 };
+  constructor(
+    private readonly stock: StockService,
+    private readonly ledger: LedgerService,
+    private readonly places: MoneyPlacesRepository,
+  ) {}
+
+  async contentsOf(tenantId: string, locationId: string): Promise<LocationContents> {
+    const drawer = (await this.places.drawersOf(tenantId, [locationId])).get(locationId);
+    return {
+      stockQuantity: await this.stock.piecesAtLocation(tenantId, locationId),
+      cashDrawerCents: drawer ? await this.ledger.moneyPlaceBalance(tenantId, drawer.id) : 0,
+    };
   }
 }
 
 /**
- * EXTENSION POINT: the balance of a money place, in cents. Hiding a money place
- * (or switching selling off, which hides the drawer) needs a zero balance.
- * Balances arrive with F07/F11; until then every place holds nothing.
+ * The balance of a money place, in cents, from the ledger (sum of its lines). Hiding a money
+ * place (or switching selling off, which hides the drawer) needs a zero balance.
  */
 @Injectable()
 export class MoneyPlaceBalanceProbe {
-  async balanceOf(_tenantId: string, _moneyPlaceId: string): Promise<number> {
-    return 0;
+  constructor(private readonly ledger: LedgerService) {}
+
+  balanceOf(tenantId: string, moneyPlaceId: string): Promise<number> {
+    return this.ledger.moneyPlaceBalance(tenantId, moneyPlaceId);
   }
 }
 

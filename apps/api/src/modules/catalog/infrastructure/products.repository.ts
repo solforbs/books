@@ -150,6 +150,26 @@ export class ProductsRepository extends TenantScopedRepository<typeof products> 
     );
   }
 
+  /** The products among `ids` matching the search words and category, ordered by name. */
+  searchAmong(
+    tenantId: string,
+    ids: string[],
+    filter: { q?: string; categoryId?: string },
+    within?: TenantTx,
+  ): Promise<ProductRow[]> {
+    const valid = ids.filter(isUuid);
+    if (valid.length === 0) return Promise.resolve([]);
+    const filters: SQL[] = [inArray(products.id, valid)];
+    if (filter.categoryId) filters.push(eq(products.categoryId, filter.categoryId));
+    for (const token of searchTokens(filter.q)) filters.push(matchesToken(token));
+    return this.find(
+      tenantId,
+      and(...filters),
+      { orderBy: [asc(products.nameKey), asc(products.id)] },
+      within,
+    );
+  }
+
   /** Distinct typed values with how often they are used, most used first (for suggestions). */
   async distinctValues(
     tenantId: string,

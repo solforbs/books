@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { AuditModule } from "../audit/audit.module";
 import { IdentityModule } from "../identity/identity.module";
+import { InventoryModule } from "../inventory/inventory.module";
+import { LedgerModule } from "../ledger/ledger.module";
 import { LocationsController } from "./api/locations.controller";
 import { MoneyPlacesController } from "./api/money-places.controller";
 import { CashDrawers } from "./application/cash-drawers";
@@ -22,13 +24,13 @@ import { MoneyPlacesRepository } from "./infrastructure/money-places.repository"
 
 /** Locations (shops, stores) and money places (F02 §3). */
 @Module({
-  imports: [IdentityModule, AuditModule],
+  imports: [IdentityModule, AuditModule, InventoryModule, LedgerModule],
   controllers: [LocationsController, MoneyPlacesController],
   providers: [
     LocationsRepository,
     MoneyPlacesRepository,
     MoneyPlaceLocationsRepository,
-    // Extension points: later slices (stock F04, cash F07/F11) replace these.
+    // Read stock (inventory) and balances (ledger) for the closing rules.
     LocationContentsProbe,
     MoneyPlaceBalanceProbe,
     CashDrawers,

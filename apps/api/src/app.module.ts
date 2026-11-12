@@ -13,7 +13,10 @@ import { BusinessModule } from "./modules/business/business.module";
 import { CatalogModule } from "./modules/catalog/catalog.module";
 import { AuthGuard } from "./modules/identity/api/auth.guard";
 import { IdentityModule } from "./modules/identity/identity.module";
+import { StockApiModule } from "./modules/inventory/stock-api.module";
+import { LedgerModule } from "./modules/ledger/ledger.module";
 import { LocationsModule } from "./modules/locations/locations.module";
+import { ReceivingModule } from "./modules/receiving/receiving.module";
 import { StaffModule } from "./modules/staff/staff.module";
 import { SuppliersModule } from "./modules/suppliers/suppliers.module";
 
@@ -32,6 +35,9 @@ import { SuppliersModule } from "./modules/suppliers/suppliers.module";
     CatalogModule,
     StaffModule,
     SuppliersModule,
+    LedgerModule,
+    ReceivingModule,
+    StockApiModule,
   ],
   controllers: [HealthController],
   providers: [
