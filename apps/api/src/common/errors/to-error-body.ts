@@ -1,6 +1,7 @@
 import { HttpException } from "@nestjs/common";
 import { ThrottlerException } from "@nestjs/throttler";
 import type { ApiError } from "@books/shared";
+import { PG_INVALID_TEXT_ENCODING, pgErrorCode } from "../database/pg-errors";
 import { AppError } from "./app-error";
 
 export interface ErrorResult {
@@ -45,6 +46,11 @@ export function toErrorResult(err: unknown): ErrorResult {
   }
   if (isZodError(err)) {
     const details = err.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
+    return { status: 400, body: body("validation_failed", "Request validation failed", details) };
+  }
+  if (PG_INVALID_TEXT_ENCODING.includes(pgErrorCode(err) ?? "")) {
+    // Text with a NUL character cannot be stored; one central answer for every module.
+    const details = [{ path: "", message: "invalid_text" }];
     return { status: 400, body: body("validation_failed", "Request validation failed", details) };
   }
   if (err instanceof ThrottlerException) {

@@ -43,6 +43,13 @@
       "when": 1794405154780,
       "tag": "0005_s1c_followups",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794466865647,
+      "tag": "0006_suppliers",
+      "breakpoints": true
     }
   ]
 }

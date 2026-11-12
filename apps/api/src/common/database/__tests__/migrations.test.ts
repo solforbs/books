@@ -47,6 +47,7 @@ describe("migrations (apps/api/drizzle)", () => {
       "products",
       "recovery_codes",
       "refresh_sessions",
+      "suppliers",
       "tenants",
       "users",
     ]);
@@ -78,7 +79,7 @@ describe("migrations (apps/api/drizzle)", () => {
       ...["users", "tenants", "memberships", "refresh_sessions", "recovery_codes"],
       ...["locations", "money_places", "money_place_locations", "membership_locations"],
       ...["product_categories", "products", "product_pack_units", "product_barcodes"],
-      ...["product_location_prices", "barcode_sequences"],
+      ...["product_location_prices", "barcode_sequences", "suppliers"],
     ];
     for (const table of tables) {
       for (const p of ["SELECT", "INSERT", "UPDATE"])

@@ -1,5 +1,6 @@
 import { soCatalog } from "./so-catalog";
 import { soSettings } from "./so-settings";
+import { soSuppliers } from "./so-suppliers";
 import type { Translations } from "./types";
 
 /**
@@ -223,7 +224,8 @@ export const so: Translations = {
     product_has_stock:
       "Alaabtan weli kayd ayay leedahay. Marka hore iibi, u wareeji ama hagaaji kaydka, kadibna qari.",
     invalid_barcode: "Barcode-kan ma sax aha. Hubi lambarka oo isku day mar kale.",
-    not_waiting: "Alaabtan mar dambe ma sugayso oggolaansho.",
+    // TODO(translate-review): now also used for suppliers
+    not_waiting: "Tan mar dambe ma sugayso oggolaansho ama dhammaystir.",
     // TODO(translate-review)
     invalid_merge_target: "Alaab ma isku dari kartid kan. Dooro alaab kale.",
     // TODO(translate-review)
@@ -234,6 +236,18 @@ export const so: Translations = {
     // TODO(translate-review)
     category_in_use: "Qaybtan weli alaab ayay leedahay. Marka hore u rar qayb kale.",
     category_not_found: "Qaybtan lama helin.",
+    // TODO(translate-review)
+    supplier_not_found: "Alaab-qeybiyahan lama helin.",
+    supplier_phone_exists: "Alaab-qeybiye kale ayaa horay u lahaa lambarkan taleefan.",
+    similar_suppliers: "Alaab-qeybiye magac la mid ah ayaa jira. Fadlan eeg liiska.",
+    supplier_has_balance:
+      "Weli waxaad lacag ku leedahay ama lacag ayuu kugu leeyahay alaab-qeybiyahan. Marka hore xaree lacagta, kadibna qari.",
+    use_full_form:
+      "Waxaad ku dari kartaa alaab-qeybiyeyaal iyo faahfaahintooda oo dhan. Isticmaal badhanka Ku dar alaab-qeybiye.",
+    // TODO(translate-review)
+    supplier_not_active:
+      "Alaab-qeybiyahan weli wuxuu sugayaa dhammaystir. Marka hore dhammaystir, kadibna qari.",
+    phone_required: "Geli lambarka taleefanka alaab-qeybiyaha.",
     unknown: "Wax baa khaldamay. Fadlan isku day mar kale.",
   },
   validation: {
@@ -253,4 +267,5 @@ export const so: Translations = {
   },
   ...soSettings,
   ...soCatalog,
+  ...soSuppliers,
 };

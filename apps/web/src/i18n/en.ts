@@ -1,5 +1,6 @@
 import { enCatalog } from "./en-catalog";
 import { enSettings } from "./en-settings";
+import { enSuppliers } from "./en-suppliers";
 
 /** English UI text. Every key here must also exist in `so.ts` (checked by a test and by types). */
 export const en = {
@@ -168,7 +169,7 @@ export const en = {
     product_has_stock:
       "This product still has stock. Sell, move or adjust the stock first, then hide it.",
     invalid_barcode: "This barcode is not valid. Check the number and try again.",
-    not_waiting: "This product is not waiting for approval any more.",
+    not_waiting: "This is not waiting for approval or completion any more.",
     pack_not_found: "This pack size was not found.",
     barcode_not_found: "This barcode was not found.",
     pack_exists: "This product already has a pack size with this name.",
@@ -180,6 +181,15 @@ export const en = {
     category_exists: "You already have a category with this name.",
     category_in_use: "This category still has products. Move them to another category first.",
     category_not_found: "This category was not found.",
+    supplier_not_found: "This supplier was not found.",
+    supplier_phone_exists: "Another supplier already has this phone number.",
+    similar_suppliers: "A supplier with a similar name already exists. Please check the list.",
+    supplier_has_balance:
+      "You still owe this supplier money, or they owe you. Settle the balance first, then hide them.",
+    use_full_form: "You can add suppliers with all their details. Use the Add supplier button.",
+    supplier_not_active:
+      "This supplier is still waiting for completion. Complete it first, then you can hide it.",
+    phone_required: "Enter the supplier's phone number.",
     unknown: "Something went wrong. Please try again.",
   },
   validation: {
@@ -196,4 +206,5 @@ export const en = {
   },
   ...enSettings,
   ...enCatalog,
+  ...enSuppliers,
 } as const;

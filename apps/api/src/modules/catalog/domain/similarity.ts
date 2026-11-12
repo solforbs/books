@@ -1,4 +1,7 @@
-import { normalizeForCompare } from "@books/shared";
+import { areNamesSimilar, nameTokens, normalizeForCompare } from "@books/shared";
+
+// Moved to @books/shared (suppliers compare names the same way); re-exported unchanged.
+export { areNamesSimilar, nameTokens };
 
 /**
  * "Is this the same thing typed differently?" (F01 §9). Pure token comparison: no database
@@ -26,27 +29,6 @@ export interface SimilarityCandidate {
 }
 
 const MODEL_FILLERS = new Set(["galaxy", "phone", "smartphone", "mobile", "tablet", "series"]);
-const NAME_SIMILARITY_THRESHOLD = 0.6;
-
-/** Unified comparison words of a typed name. */
-export function nameTokens(name: string): string[] {
-  const unified = normalizeForCompare(name)
-    .replace(/\busb (?=type ?c\b)/g, "") // "usb type c" -> "type c"
-    .replace(/\b(?:usb|type) ?c\b/g, "typec") // Type-C, USB C, USB-C, usbc -> typec
-    .replace(/(\d) (?=(?:m|cm|mm|mb|gb|tb|w|mah|v|a|ml|l|kg|g)\b)/g, "$1"); // "1 m" -> "1m"
-  return [...new Set(unified.split(" ").filter(Boolean))];
-}
-
-export function areNamesSimilar(a: string, b: string): boolean {
-  const left = new Set(nameTokens(a));
-  const right = new Set(nameTokens(b));
-  if (left.size === 0 || right.size === 0) return false;
-  const shared = [...left].filter((t) => right.has(t));
-  const union = new Set([...left, ...right]);
-  const different = [...union].filter((t) => !(left.has(t) && right.has(t)));
-  if (different.some((t) => /\d/.test(t))) return false;
-  return shared.length / union.size >= NAME_SIMILARITY_THRESHOLD;
-}
 
 /** Model without filler words and without the brand, spaces removed: "Galaxy A15" -> "a15". */
 export function compactModel(brand: string | null, model: string | null): string {

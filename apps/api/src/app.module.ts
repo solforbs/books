@@ -15,6 +15,7 @@ import { AuthGuard } from "./modules/identity/api/auth.guard";
 import { IdentityModule } from "./modules/identity/identity.module";
 import { LocationsModule } from "./modules/locations/locations.module";
 import { StaffModule } from "./modules/staff/staff.module";
+import { SuppliersModule } from "./modules/suppliers/suppliers.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { StaffModule } from "./modules/staff/staff.module";
     LocationsModule,
     CatalogModule,
     StaffModule,
+    SuppliersModule,
   ],
   controllers: [HealthController],
   providers: [

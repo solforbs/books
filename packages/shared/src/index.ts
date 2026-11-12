@@ -10,5 +10,7 @@ export * from "./contracts/locations.contract";
 export * from "./contracts/staff.contract";
 export * from "./catalog/barcode";
 export * from "./catalog/product-name";
+export * from "./catalog/name-similarity";
 export * from "./contracts/products.contract";
 export * from "./contracts/product-categories.contract";
+export * from "./contracts/suppliers.contract";

@@ -10,6 +10,7 @@ export const enSettings = {
     label: "Main menu",
     home: "Home",
     products: "Products",
+    suppliers: "Suppliers",
     settings: "Settings",
   },
   setup: {
@@ -178,6 +179,7 @@ export const enSettings = {
     approve_items: "Approve new products and suppliers",
     add_products: "Add products",
     manage_products: "Change, hide and organise products and categories",
+    manage_suppliers: "Add and change suppliers and how you pay them",
     set_prices: "Change prices",
     see_cost_profit: "See costs and profit",
     sell: "Sell and take payments",
