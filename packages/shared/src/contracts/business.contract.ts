@@ -52,6 +52,8 @@ export const updateBusinessRequestSchema = z.object({
     .optional(),
   footerNote: optionalText(300),
   vatEnabled: z.boolean(),
+  /** Left out keeps the current value, so an older app never switches it off by accident. */
+  hidePricesFromStorekeepers: z.boolean().optional(),
 });
 export type UpdateBusinessRequest = z.input<typeof updateBusinessRequestSchema>;
 
@@ -64,6 +66,7 @@ export const businessSchema = z.object({
   kraPin: z.string().nullable(),
   footerNote: z.string().nullable(),
   vatEnabled: z.boolean(),
+  hidePricesFromStorekeepers: z.boolean(),
   createdAt: z.string(),
 });
 export type Business = z.infer<typeof businessSchema>;

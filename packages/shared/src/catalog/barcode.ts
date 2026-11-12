@@ -29,7 +29,7 @@ export function isShopBarcode(code: string): boolean {
   return isValidEan13(code) && code.startsWith("20");
 }
 
-/** What a scanner or keyboard may send: digits and letters only, no spaces. */
+/** What a scanner or keyboard may send: digits and letters only, no spaces. Letters are case-insensitive (founders, 2026-11-11): "abc-123" and "ABC-123" are one barcode, so every stored, compared or searched barcode is upper-case. */
 export function normalizeBarcode(input: string): string {
-  return input.replace(/\s+/g, "").trim();
+  return input.replace(/\s+/g, "").trim().toUpperCase();
 }

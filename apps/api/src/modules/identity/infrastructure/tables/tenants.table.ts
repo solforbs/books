@@ -31,6 +31,8 @@ export const tenants = pgTable(
     kraPin: text("kra_pin"),
     footerNote: text("footer_note"),
     vatEnabled: boolean("vat_enabled").notNull().default(false),
+    /** Owner switch (F01 §11): storekeepers without `set_prices` then see no selling prices. */
+    hidePricesFromStorekeepers: boolean("hide_prices_from_storekeepers").notNull().default(false),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
   },

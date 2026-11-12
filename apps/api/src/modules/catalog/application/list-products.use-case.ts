@@ -9,6 +9,7 @@ import {
   type ProductSearch,
 } from "../infrastructure/products.repository";
 import type { ProductStatus } from "../infrastructure/tables/products.table";
+import type { TenantAccessContext } from "../../identity/domain/auth-context";
 import { ProductView } from "./product-view";
 
 export interface ProductListQuery {
@@ -46,7 +47,7 @@ export class ListProductsUseCase {
     private readonly view: ProductView,
   ) {}
 
-  async list(tenantId: string, query: ProductListQuery): Promise<ProductsResponse> {
+  async list(access: TenantAccessContext, query: ProductListQuery): Promise<ProductsResponse> {
     const search: ProductSearch = {
       q: query.q,
       categoryId: query.categoryId,
@@ -54,23 +55,25 @@ export class ListProductsUseCase {
       limit: query.limit,
       cursor: query.cursor,
     };
+    const { tenantId } = access;
     return this.tenantDb.transaction(tenantId, async (t) => {
       const rows = await this.products.search(tenantId, search, t);
       const page = rows.slice(0, query.limit);
       const last = page[page.length - 1];
       return {
-        products: await this.view.many(tenantId, page, t),
+        products: await this.view.many(access, page, t),
         nextCursor: rows.length > query.limit && last ? encodeCursor(last.nameKey, last.id) : null,
       };
     });
   }
 
   /** Every active or waiting product carrying this scanned code (several only for condition variants). */
-  async lookup(tenantId: string, barcode: string): Promise<ProductsResponse> {
+  async lookup(access: TenantAccessContext, barcode: string): Promise<ProductsResponse> {
     const value = normalizeBarcode(barcode);
+    const { tenantId } = access;
     return this.tenantDb.transaction(tenantId, async (t) => {
       const rows = value ? await this.products.findSellableByBarcode(tenantId, value, t) : [];
-      return { products: await this.view.many(tenantId, rows, t), nextCursor: null };
+      return { products: await this.view.many(access, rows, t), nextCursor: null };
     });
   }
 }

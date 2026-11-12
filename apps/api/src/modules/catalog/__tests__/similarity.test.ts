@@ -150,7 +150,7 @@ describe("keys, names and barcodes", () => {
       "A12/5",
       "ab.9",
     ]) {
-      expect(checkBarcodeValue(label), label).toEqual({ ok: true, value: label });
+      expect(checkBarcodeValue(label), label).toEqual({ ok: true, value: label.toUpperCase() });
     }
     expect(checkBarcodeValue("69-01")).toEqual({ ok: true, value: "69-01" });
     expect(checkBarcodeValue("A".repeat(43))).toMatchObject({ ok: true });

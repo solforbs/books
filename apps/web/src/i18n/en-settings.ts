@@ -46,6 +46,8 @@ export const enSettings = {
     footerNoteHint: "Example: Thank you for shopping with us",
     vat: "Charge VAT",
     vatHint: "Leave this off unless your business is registered for VAT with KRA.",
+    hidePrices: "Hide selling prices from storekeepers",
+    hidePricesHint: "Storekeepers will not see selling prices on any product screen.",
   },
   locations: {
     add: "Add location",

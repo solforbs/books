@@ -13,6 +13,7 @@ import {
   isShopBarcode,
   isValidEan13,
   modelGroupKey,
+  normalizeBarcode,
   productDuplicateKey,
   shopBarcodeFromSequence,
 } from "../index";
@@ -31,6 +32,11 @@ describe("barcodes (F01 §7)", () => {
     expect(isShopBarcode(a) && isShopBarcode(b)).toBe(true);
     expect(a).not.toBe(b);
     expect(() => shopBarcodeFromSequence(0)).toThrow();
+  });
+  it("treats letters as case-insensitive and drops spaces", () => {
+    expect(normalizeBarcode("abc-123")).toBe("ABC-123");
+    expect(normalizeBarcode(" Abc 123/x ")).toBe("ABC123/X");
+    expect(normalizeBarcode("6901234567892")).toBe("6901234567892");
   });
 });
 
