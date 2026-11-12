@@ -14,3 +14,5 @@ export * from "./catalog/name-similarity";
 export * from "./contracts/products.contract";
 export * from "./contracts/product-categories.contract";
 export * from "./contracts/suppliers.contract";
+export * from "./contracts/deliveries.contract";
+export * from "./contracts/stock.contract";

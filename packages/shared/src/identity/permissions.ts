@@ -21,6 +21,7 @@ export const PERMISSIONS = [
   "give_discounts", // change price above the minimum / cart discount (F06)
   "do_refunds", // refund money on returns (F08)
   "receive_stock", // stock in (F04)
+  "pay_suppliers", // pay suppliers, also at delivery (F04 §7, F07)
   "record_expenses", // expenses (F11)
   "close_day", // close the day (F11)
   "view_reports", // reports and dashboard (F12)
@@ -43,6 +44,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "give_discounts",
     "do_refunds",
     "receive_stock",
+    "pay_suppliers",
     "record_expenses",
     "close_day",
     "view_reports",
