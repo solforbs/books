@@ -12,7 +12,7 @@ describe("Settings by permission", () => {
   it("an owner sees every Settings page", async () => {
     const { user } = renderShop("/");
     await screen.findByText("Hello, Amina Hassan");
-    expect(navLinks()).toEqual(["Home", "Products", "Suppliers", "Settings"]);
+    expect(navLinks()).toEqual(["Home", "Products", "Suppliers", "Stock in", "Stock", "Settings"]);
     await user.click(screen.getAllByRole("link", { name: "Settings" })[0] as HTMLElement);
     for (const name of ["Business details", "Locations", "Money places", "Staff"]) {
       expect(await screen.findByRole("link", { name: new RegExp(name) })).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe("Settings by permission", () => {
   it("a cashier has no Settings at all, not even by address", async () => {
     renderShop("/settings/staff", {}, accessFor("cashier"));
     expect(await screen.findByText("Hello, Amina Hassan")).toBeInTheDocument();
-    expect(navLinks()).toEqual(["Home", "Products", "Suppliers"]);
+    expect(navLinks()).toEqual(["Home", "Products", "Suppliers", "Stock in", "Stock"]);
   });
 
   it("a cashier switched on for business details sees only that entry", async () => {

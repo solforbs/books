@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { IMEI_A, IMEI_B, IMEI_C, boxed, charger, productPage } from "@/test/receiving-fixtures";
+import { IMEI_A, IMEI_B, IMEI_C, boxed, productPage } from "@/test/receiving-fixtures";
 import {
   expectQuantity,
   findRow,
@@ -125,7 +125,9 @@ describe("Stock in: the sheet", () => {
   });
 
   it("converts a pack unit to pieces and sends the pack with the quantity", async () => {
-    const { user, calls } = openStockIn({ "GET /products/lookup?barcode=CABLE": productPage(boxed) });
+    const { user, calls } = openStockIn({
+      "GET /products/lookup?barcode=CABLE": productPage(boxed),
+    });
     await pickSupplier(user);
     await scan(user, "cable");
     const row = await findRow("USB Cable");
@@ -147,7 +149,10 @@ describe("Stock in: the sheet", () => {
     await pickSupplier(user);
     await scan(user, "0000111122223");
     expect(await screen.findByText("No product has the barcode 0000111122223.")).toBeVisible();
-    expect(screen.getByRole("link", { name: /Add this product/ })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: /Add this product/ })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
   });
 
   it("tells the person to add the phone first when an IMEI is scanned into the product box", async () => {
@@ -170,7 +175,9 @@ describe("Stock in: the sheet", () => {
     await user.click(screen.getByRole("button", { name: "Save delivery" }));
     expect(await screen.findByText("Enter a whole quantity of 1 or more.")).toBeVisible();
     expect(postedDelivery(calls)).toHaveLength(0);
-    await waitFor(() => expect(within(rowOf("Oraimo 20W Charger")).getByLabelText("Quantity")).toBeVisible());
+    await waitFor(() =>
+      expect(within(rowOf("Oraimo 20W Charger")).getByLabelText("Quantity")).toBeVisible(),
+    );
   });
 
   it("blocks suppliers paid in US dollars until dollar deliveries exist", async () => {
@@ -197,9 +204,7 @@ describe("Stock in: the sheet", () => {
     await scan(user, "6901234567890");
     await findRow("Oraimo 20W Charger");
     await user.click(screen.getByRole("button", { name: "Save delivery" }));
-    expect(
-      await screen.findByText(/Dollar deliveries are not available yet/),
-    ).toBeVisible();
+    expect(await screen.findByText(/Dollar deliveries are not available yet/)).toBeVisible();
     expect(postedDelivery(calls)).toHaveLength(0);
   });
 

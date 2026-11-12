@@ -197,6 +197,8 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     give_discounts: "Sii qiimo dhimis",
     do_refunds: "Lacag celi",
     receive_stock: "Qaado alaab",
+    // TODO(translate-review)
+    pay_suppliers: "Bixi alaab-qeybiyeyaasha",
     record_expenses: "Qor kharashaadka",
     close_day: "Xir maalinta",
     view_reports: "Arag warbixinnada",
