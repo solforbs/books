@@ -232,6 +232,9 @@ export const soReceiving: Pick<Translations, keyof typeof enReceiving> = {
 
 export const soReceivingErrors: Record<keyof typeof enReceivingErrors, string> = {
   delivery_not_found: "Keenistan lama helin.",
+  // TODO(translate-review)
+  supplier_currency_not_supported:
+    "Keenisyada ka timaadda alaab-qeybiyeyaasha lacagta doolarka ku bixiya weli lama heli karo.",
   command_conflict:
     "Keenistan hore ayaa loo keydiyay faahfaahin kale. Hubi liiska keenisyada kahor intaadan mar kale isku dayin.",
   product_not_receivable:

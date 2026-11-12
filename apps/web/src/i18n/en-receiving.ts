@@ -219,6 +219,8 @@ export const enReceiving = {
 /** API error texts, merged into `errors` of en.ts. */
 export const enReceivingErrors = {
   delivery_not_found: "This delivery was not found.",
+  supplier_currency_not_supported:
+    "Deliveries from suppliers paid in US dollars are not available yet.",
   command_conflict:
     "This delivery was already saved with different details. Check the deliveries list before trying again.",
   product_not_receivable:
