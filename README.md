@@ -4,12 +4,12 @@ Inventory-first shop management for **Kenyan traders** (all kinds of goods, with
 
 ## What works today
 
-| Area | What you can do |
-|---|---|
-| **Accounts** | Create a business, log in with phone or email, recovery codes, several businesses per person |
-| **Locations and staff** | Shops and stores, M-Pesa Till / Paybill / bank / safe, staff with roles and per-person permissions |
-| **Products** | Categories, products (typed names or built from brand, model, storage, colour, condition), create several at once, IMEI / serial / quantity tracking, pack sizes, barcodes, duplicate checks, approvals |
-| **Suppliers** | Supplier list with payment rules (cash, within a time, pay as you sell, after all sold, with a latest date), US dollar suppliers |
+| Area                    | What you can do                                                                                                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Accounts**            | Create a business, log in with phone or email, recovery codes, several businesses per person                                                                                                            |
+| **Locations and staff** | Shops and stores, M-Pesa Till / Paybill / bank / safe, staff with roles and per-person permissions                                                                                                      |
+| **Products**            | Categories, products (typed names or built from brand, model, storage, colour, condition), create several at once, IMEI / serial / quantity tracking, pack sizes, barcodes, duplicate checks, approvals |
+| **Suppliers**           | Supplier list with payment rules (cash, within a time, pay as you sell, after all sold, with a latest date), US dollar suppliers                                                                        |
 
 The roadmap and every approved feature spec are in [`research/`](research/).
 
