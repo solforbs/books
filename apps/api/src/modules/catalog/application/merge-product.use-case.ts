@@ -106,7 +106,12 @@ export class MergeProductUseCase {
         );
       }
       const merged = (await this.products.findById(tenantId, source.id, t))!;
-      return { product: await this.view.one(tenantId, merged, t), target, source, movedBarcodes };
+      return {
+        product: await this.view.one(actor.access, merged, t),
+        target,
+        source,
+        movedBarcodes,
+      };
     });
     await this.audit.record({
       ...auditBase(actor),

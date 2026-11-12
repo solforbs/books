@@ -34,7 +34,7 @@ export class HideProductUseCase {
     const result = await this.tenantDb.transaction(tenantId, async (t) => {
       const row = await this.lock.live(t, id);
       if (row.status === "hidden") {
-        return { changed: false, product: await this.view.one(tenantId, row, t) };
+        return { changed: false, product: await this.view.one(actor.access, row, t) };
       }
       const usage = await this.probe.usageOf(tenantId, id);
       if (usage.stockQuantity > 0) throw CatalogErrors.productHasStock(usage.stockQuantity);
@@ -48,7 +48,7 @@ export class HideProductUseCase {
         t,
       );
       const updated = (await this.products.findById(tenantId, id, t))!;
-      return { changed: true, product: await this.view.one(tenantId, updated, t) };
+      return { changed: true, product: await this.view.one(actor.access, updated, t) };
     });
     if (result.changed) {
       await this.audit.record({

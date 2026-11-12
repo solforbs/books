@@ -66,7 +66,7 @@ export class ApproveProductUseCase {
           t,
         );
         const approved = (await this.products.findById(tenantId, id, t))!;
-        return { changes, product: await this.view.one(tenantId, approved, t) };
+        return { changes, product: await this.view.one(actor.access, approved, t) };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, { tenantId })) ?? err;

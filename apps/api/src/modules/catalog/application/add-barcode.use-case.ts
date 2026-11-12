@@ -57,7 +57,7 @@ export class AddBarcodeUseCase {
         const [owned] = (await this.barcodes.activeByValues(tenantId, [value], t)).filter(
           (b) => b.productId === id,
         );
-        if (owned) return { added: false, product: await this.view.one(tenantId, row, t) };
+        if (owned) return { added: false, product: await this.view.one(actor.access, row, t) };
         const clash = (await this.checks.clashes(t, row, [value], id))[0];
         if (clash) {
           throw CatalogErrors.barcodeInUse(clash.barcode, clash.product.id, clash.product.name);
@@ -81,7 +81,7 @@ export class AddBarcodeUseCase {
           t,
         );
         const fresh = (await this.products.findById(tenantId, id, t))!;
-        return { added: true, product: await this.view.one(tenantId, fresh, t) };
+        return { added: true, product: await this.view.one(actor.access, fresh, t) };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, { tenantId, barcodes: [value] })) ?? err;

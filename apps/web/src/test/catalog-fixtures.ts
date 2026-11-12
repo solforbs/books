@@ -60,6 +60,7 @@ export const business = {
   kraPin: null,
   footerNote: null,
   vatEnabled: false,
+  hidePricesFromStorekeepers: false,
   createdAt: "2026-11-01T08:00:00.000Z",
 };
 

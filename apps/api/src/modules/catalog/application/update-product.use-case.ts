@@ -38,7 +38,7 @@ export class UpdateProductUseCase {
         const current = await this.lock.live(t, id);
         const { changes } = await this.editor.apply(actor, t, current, patch, vatEnabled);
         const updated = (await this.products.findById(tenantId, id, t))!;
-        return { changes, product: await this.view.one(tenantId, updated, t) };
+        return { changes, product: await this.view.one(actor.access, updated, t) };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, { tenantId })) ?? err;

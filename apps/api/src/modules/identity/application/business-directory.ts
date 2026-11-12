@@ -12,6 +12,7 @@ const toBusiness = (t: TenantRow): Business => ({
   kraPin: t.kraPin,
   footerNote: t.footerNote,
   vatEnabled: t.vatEnabled,
+  hidePricesFromStorekeepers: t.hidePricesFromStorekeepers,
   createdAt: t.createdAt.toISOString(),
 });
 

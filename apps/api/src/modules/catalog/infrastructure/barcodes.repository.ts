@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { normalizeBarcode } from "@books/shared";
 import { isUuid } from "../../../common/database/uuid";
 import { TenantDb, type TenantTx } from "../../../common/tenancy/tenant-db";
 import { TenantScopedRepository } from "../../../common/tenancy/tenant-scoped.repository";
@@ -17,7 +18,8 @@ export class BarcodesRepository extends TenantScopedRepository<typeof productBar
    * locked in sorted order, so two requests with several codes cannot deadlock.
    */
   async lockValues(tenantId: string, values: string[], within: TenantTx): Promise<void> {
-    const ordered = [...new Set(values)].sort();
+    // Callers already normalise; doing it again here keeps the lock key case-blind regardless.
+    const ordered = [...new Set(values.map(normalizeBarcode))].sort();
     for (const value of ordered) {
       await within.tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${`barcode:${tenantId}:${value}`}, 0))`,
@@ -30,7 +32,10 @@ export class BarcodesRepository extends TenantScopedRepository<typeof productBar
     if (values.length === 0) return Promise.resolve([]);
     return this.find(
       tenantId,
-      and(inArray(productBarcodes.value, values), eq(productBarcodes.active, true)),
+      and(
+        inArray(productBarcodes.value, values.map(normalizeBarcode)),
+        eq(productBarcodes.active, true),
+      ),
       {},
       within,
     );

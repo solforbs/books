@@ -16,6 +16,7 @@ const auditable = (b: Business) => ({
   kraPin: b.kraPin ? "set" : null,
   footerNote: b.footerNote ? "set" : null,
   vatEnabled: b.vatEnabled,
+  hidePricesFromStorekeepers: b.hidePricesFromStorekeepers,
 });
 
 /**
@@ -34,7 +35,14 @@ export class UpdateBusinessUseCase {
     const { tenantId } = actor.access;
     const before = await this.directory.get(tenantId);
     const { name, vatEnabled, address, phone, email, kraPin, footerNote } = input;
-    const optional = { address, phone, email, kraPin, footerNote };
+    const optional = {
+      address,
+      phone,
+      email,
+      kraPin,
+      footerNote,
+      hidePricesFromStorekeepers: input.hidePricesFromStorekeepers,
+    };
     const business = await this.directory.update(tenantId, {
       name,
       vatEnabled,

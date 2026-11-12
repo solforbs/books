@@ -1,6 +1,7 @@
 import type { Category, Location, Product } from "@books/shared";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "@/features/staff/format";
+import { useSeesPrices } from "../hooks/use-sees-prices";
 import { showMoney } from "../money-input";
 
 interface ProductFactsProps {
@@ -14,6 +15,7 @@ interface ProductFactsProps {
 /** Every field of the product as a plain list. Cost is never here (F04). */
 export function ProductFacts({ product, category, locations, showAllPrices }: ProductFactsProps) {
   const { t, i18n } = useTranslation();
+  const seesPrices = useSeesPrices();
   const price = (v: number | null) =>
     v === null ? null : t("catalog.price", { amount: showMoney(v) });
   const facts: [string, string | null | undefined][] = [
@@ -25,8 +27,10 @@ export function ProductFacts({ product, category, locations, showAllPrices }: Pr
     [t("catalog.form.condition"), product.condition],
     [t("catalog.form.tracking"), t(`catalog.tracking.${product.trackingType}`)],
     [t("catalog.detail.baseUnit"), product.baseUnit],
-    [t("catalog.form.retailPrice"), price(product.retailPrice)],
-    ...(showAllPrices
+    ...(seesPrices
+      ? ([[t("catalog.form.retailPrice"), price(product.retailPrice)]] as [string, string | null][])
+      : []),
+    ...(seesPrices && showAllPrices
       ? ([
           [t("catalog.form.wholesalePrice"), price(product.wholesalePrice)],
           [t("catalog.form.minPrice"), price(product.minPrice)],

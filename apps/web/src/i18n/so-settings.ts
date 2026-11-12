@@ -52,6 +52,8 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     footerNoteHint: "Tusaale: Mahadsanid inaad nala soo iibsatay",
     vat: "Qaado VAT",
     vatHint: "Dami tan haddii ganacsigaagu aanu VAT kaga diiwaan gashanayn KRA.",
+    hidePrices: "Ka qari kaydiyayaasha qiimaha iibka",
+    hidePricesHint: "Kaydiyayaasha ma arki doonaan qiimaha iibka shaashad alaab kasta.",
   },
   locations: {
     add: "Ku dar goob",

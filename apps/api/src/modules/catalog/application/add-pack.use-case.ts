@@ -40,6 +40,14 @@ export class AddPackUseCase {
       throw notAllowed();
     }
     const name = input.name.replace(/\s+/g, " ").trim();
+    // Prices are part of the entry (F01 §10); the history endpoint hides them from people
+    // without set_prices.
+    const packSnapshot = {
+      name,
+      size: input.size,
+      wholesalePrice: input.wholesalePrice ?? null,
+      retailPrice: input.retailPrice ?? null,
+    };
     let product;
     try {
       product = await this.tenantDb.transaction(tenantId, async (t) => {
@@ -64,11 +72,11 @@ export class AddPackUseCase {
           tenantId,
           id,
           userId,
-          [{ action: "pack_added", field: "pack", after: { name, size: input.size } }],
+          [{ action: "pack_added", field: "pack", after: packSnapshot }],
           t,
         );
         const fresh = (await this.products.findById(tenantId, id, t))!;
-        return this.view.one(tenantId, fresh, t);
+        return this.view.one(actor.access, fresh, t);
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, { tenantId })) ?? err;
@@ -77,7 +85,7 @@ export class AddPackUseCase {
       ...auditBase(actor),
       action: "product_pack_added",
       targetId: id,
-      details: { after: { name, size: input.size } },
+      details: { after: packSnapshot },
     });
     return { product };
   }

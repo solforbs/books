@@ -9,6 +9,7 @@ import { FormError } from "@/features/auth/components/form-error";
 import { formatDateTime } from "@/features/staff/format";
 import { isApiError } from "@/lib/api";
 import { useApproveProduct, useRejectProduct } from "../hooks/use-product-mutations";
+import { useSeesPrices } from "../hooks/use-sees-prices";
 import { moneyToInput, parseMoneyInput, showMoney } from "../money-input";
 import { ApproveFixFields, type Fixes } from "./approve-fix-fields";
 import { MergePanel } from "./merge-panel";
@@ -27,6 +28,7 @@ export function WaitingItem({ product, categories, canSetPrices }: WaitingItemPr
   const approve = useApproveProduct();
   const reject = useRejectProduct();
   const [mode, setMode] = useState<Mode>("idle");
+  const seesPrices = useSeesPrices();
   const [badPrice, setBadPrice] = useState(false);
   const [fixes, setFixes] = useState<Fixes>({
     name: product.name,
@@ -61,7 +63,8 @@ export function WaitingItem({ product, categories, canSetPrices }: WaitingItemPr
             name: product.addedBy.name,
             when: formatDateTime(product.createdAt, i18n.language),
           })}
-          {product.retailPrice !== null &&
+          {seesPrices &&
+            product.retailPrice !== null &&
             ` · ${t("catalog.price", { amount: showMoney(product.retailPrice) })}`}
         </p>
       </div>
