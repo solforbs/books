@@ -112,7 +112,15 @@ export class ProductEditor {
         patch.warrantyMonths !== undefined ? patch.warrantyMonths : current.warrantyMonths,
     });
 
-    const acknowledged = await this.checkIdentity(t, current, draft, mode, patch, categoryChanged);
+    const acknowledged = await this.checkIdentity(
+      actor,
+      t,
+      current,
+      draft,
+      mode,
+      patch,
+      categoryChanged,
+    );
     const changes = diffDrafts(before, draft);
     const priceChange = await this.applyLocationPrices(actor, t, current.id, patch);
     if (priceChange) changes.push(priceChange);
@@ -178,6 +186,7 @@ export class ProductEditor {
 
   /** Duplicate, barcode and similar checks when the product's identity changes. */
   private async checkIdentity(
+    actor: Actor,
     t: TenantTx,
     current: ProductRow,
     draft: ReturnType<typeof withKeys>,
@@ -198,7 +207,7 @@ export class ProductEditor {
     if (clash)
       throw CatalogErrors.barcodeInUse(clash.barcode, clash.product.id, clash.product.name);
     if (found.similar.length > 0 && !patch.acknowledgeSimilar) {
-      throw CatalogErrors.similarProducts(await this.view.many(t.tenantId, found.similar, t));
+      throw CatalogErrors.similarProducts(await this.view.many(actor.access, found.similar, t));
     }
     return patch.acknowledgeSimilar ? found.similar.map((s) => ({ id: s.id, name: s.name })) : [];
   }

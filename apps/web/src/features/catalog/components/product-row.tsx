@@ -2,6 +2,7 @@ import type { Product } from "@books/shared";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { useSeesPrices } from "../hooks/use-sees-prices";
 import { showMoney } from "../money-input";
 import { StatusBadge } from "./product-badges";
 
@@ -13,6 +14,7 @@ interface ProductRowProps {
 /** One line of the product list: name, category, selling price and a status badge if needed. */
 export function ProductRow({ product, categoryName }: ProductRowProps) {
   const { t } = useTranslation();
+  const seesPrices = useSeesPrices();
   return (
     <li>
       <Link
@@ -28,7 +30,7 @@ export function ProductRow({ product, categoryName }: ProductRowProps) {
             <StatusBadge status={product.status} />
           </span>
         </span>
-        {product.retailPrice !== null && (
+        {seesPrices && product.retailPrice !== null && (
           <span className="shrink-0 font-semibold text-slate-900">
             {t("catalog.price", { amount: showMoney(product.retailPrice) })}
           </span>

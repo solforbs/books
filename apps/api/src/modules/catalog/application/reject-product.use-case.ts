@@ -52,7 +52,7 @@ export class RejectProductUseCase {
         [{ action: "rejected", field: "status", before: "waiting", after: "rejected" }],
         t,
       );
-      return this.view.one(tenantId, (await this.products.findById(tenantId, id, t))!, t);
+      return this.view.one(actor.access, (await this.products.findById(tenantId, id, t))!, t);
     });
     await this.audit.record({
       ...auditBase(actor),

@@ -59,7 +59,7 @@ export class GenerateBarcodeUseCase {
         const existing = (await this.barcodes.activeForProduct(tenantId, id, t)).find(
           (b) => b.kind === "shop" && b.packUnitId === (packUnitId ?? null),
         );
-        if (existing) return { value: null, product: await this.view.one(tenantId, row, t) };
+        if (existing) return { value: null, product: await this.view.one(actor.access, row, t) };
 
         const value = await this.freeCode(tenantId, t);
         // Nothing else was written: commit so the skipped numbers stay skipped, then refuse.
@@ -83,7 +83,7 @@ export class GenerateBarcodeUseCase {
           t,
         );
         const fresh = (await this.products.findById(tenantId, id, t))!;
-        return { value, product: await this.view.one(tenantId, fresh, t) };
+        return { value, product: await this.view.one(actor.access, fresh, t) };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, { tenantId })) ?? err;

@@ -37,7 +37,7 @@ export class RetireBarcodeUseCase {
         (b) => b.id === barcodeId,
       );
       if (!code) throw CatalogErrors.barcodeNotFound();
-      if (!code.active) return { value: null, product: await this.view.one(tenantId, row, t) };
+      if (!code.active) return { value: null, product: await this.view.one(actor.access, row, t) };
       await this.barcodes.retireOne(tenantId, code.id, t);
       await this.history.add(
         tenantId,
@@ -47,7 +47,7 @@ export class RetireBarcodeUseCase {
         t,
       );
       const fresh = (await this.products.findById(tenantId, id, t))!;
-      return { value: code.value, product: await this.view.one(tenantId, fresh, t) };
+      return { value: code.value, product: await this.view.one(actor.access, fresh, t) };
     });
     if (result.value) {
       await this.audit.record({

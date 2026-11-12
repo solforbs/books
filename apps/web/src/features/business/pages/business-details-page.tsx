@@ -35,12 +35,17 @@ function BusinessForm({ business }: { business: Business }) {
     footerNote: business.footerNote ?? "",
   });
   const [vatEnabled, setVatEnabled] = useState(business.vatEnabled);
+  const [hidePrices, setHidePrices] = useState(business.hidePricesFromStorekeepers);
   const { fieldError, showIssues, clear } = useFieldErrors();
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     update.reset();
-    const parsed = updateBusinessRequestSchema.safeParse({ ...values, vatEnabled });
+    const parsed = updateBusinessRequestSchema.safeParse({
+      ...values,
+      vatEnabled,
+      hidePricesFromStorekeepers: hidePrices,
+    });
     if (!parsed.success) return showIssues(parsed.error.issues);
     clear();
     update.mutate(parsed.data);
@@ -71,6 +76,12 @@ function BusinessForm({ business }: { business: Business }) {
           description={t("businessDetails.vatHint")}
           checked={vatEnabled}
           onChange={setVatEnabled}
+        />
+        <Switch
+          label={t("businessDetails.hidePrices")}
+          description={t("businessDetails.hidePricesHint")}
+          checked={hidePrices}
+          onChange={setHidePrices}
         />
         <FormError error={update.error} />
         {update.isSuccess && <Alert variant="success">{t("common.saved")}</Alert>}

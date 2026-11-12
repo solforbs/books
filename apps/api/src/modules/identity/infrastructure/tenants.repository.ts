@@ -6,7 +6,14 @@ import { tenants, type TenantRow } from "./tables/tenants.table";
 
 export type TenantDetails = Pick<
   TenantRow,
-  "name" | "address" | "phone" | "email" | "kraPin" | "footerNote" | "vatEnabled"
+  | "name"
+  | "address"
+  | "phone"
+  | "email"
+  | "kraPin"
+  | "footerNote"
+  | "vatEnabled"
+  | "hidePricesFromStorekeepers"
 >;
 
 @Injectable()

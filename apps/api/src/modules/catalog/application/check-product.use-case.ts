@@ -43,7 +43,7 @@ export class CheckProductUseCase {
           ...found.clashes.map((c) => c.product),
         ].map((r) => [r.id, r]),
       );
-      const views = await this.view.many(tenantId, [...rows.values()], t);
+      const views = await this.view.many(actor.access, [...rows.values()], t);
       const byId = new Map(views.map((p) => [p.id, p]));
       return {
         exactDuplicate: found.exact ? (byId.get(found.exact.id) ?? null) : null,

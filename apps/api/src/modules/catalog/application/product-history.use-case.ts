@@ -4,6 +4,7 @@ import { TenantDb } from "../../../common/tenancy/tenant-db";
 import { MembersService } from "../../identity/application/members.service";
 import type { Actor } from "../../identity/domain/actor";
 import { CatalogErrors } from "../domain/catalog-errors";
+import { withoutPackPrices } from "../domain/price-visibility";
 import { PRICE_FIELDS } from "../domain/product-changes";
 import { HistoryRepository } from "../infrastructure/history.repository";
 import { ProductsRepository } from "../infrastructure/products.repository";
@@ -36,6 +37,7 @@ export class ProductHistoryUseCase {
     return {
       entries: rows
         .filter((r) => seesPrices || !r.field || !PRICE_FIELDS.includes(r.field))
+        .map((r) => (seesPrices || r.field !== "pack" ? r : withoutPackPrices(r)))
         .map((r) => ({
           at: r.at.toISOString(),
           by: { id: r.byUserId, name: names.get(r.byUserId) ?? "" },

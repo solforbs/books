@@ -139,7 +139,7 @@ export class CreateProductUseCase {
     if (clash)
       throw CatalogErrors.barcodeInUse(clash.barcode, clash.product.id, clash.product.name);
     if (found.similar.length > 0 && !input.acknowledgeSimilar) {
-      throw CatalogErrors.similarProducts(await this.view.many(t.tenantId, found.similar, t));
+      throw CatalogErrors.similarProducts(await this.view.many(actor.access, found.similar, t));
     }
 
     const row = await this.products.create(
@@ -215,7 +215,7 @@ export class CreateProductUseCase {
       ],
       t,
     );
-    return { product: await this.view.one(t.tenantId, row, t), acknowledged };
+    return { product: await this.view.one(actor.access, row, t), acknowledged };
   }
 }
 
