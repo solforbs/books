@@ -21,7 +21,7 @@ export class GetSupplierUseCase {
     return this.tenantDb.transaction(access.tenantId, async (t) => {
       const row = await this.suppliers.findById(access.tenantId, id, t);
       if (!row) throw SupplierErrors.notFound();
-      return { supplier: await this.view.one(row, t) };
+      return { supplier: await this.view.one(row, access, t) };
     });
   }
 }

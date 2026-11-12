@@ -19,6 +19,12 @@ export function makeSupplier(overrides: Partial<Supplier> = {}): Supplier {
   };
 }
 
+/** What people who see suppliers only through receiving stock get: the private fields are absent. */
+export function makeReducedSupplier(overrides: Partial<Supplier> = {}): Supplier {
+  const { id, name, phone, paymentRule, status, addedBy, createdAt } = makeSupplier(overrides);
+  return { id, name, phone, paymentRule, status, addedBy, createdAt };
+}
+
 export function suppliersPage(suppliers: Supplier[], nextCursor: string | null = null) {
   return { body: { suppliers, nextCursor } };
 }

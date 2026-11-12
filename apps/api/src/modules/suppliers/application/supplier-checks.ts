@@ -3,6 +3,7 @@ import { areNamesSimilar, type Supplier } from "@books/shared";
 import type { TenantTx } from "../../../common/tenancy/tenant-db";
 import { SupplierErrors } from "../domain/supplier-errors";
 import { SuppliersRepository } from "../infrastructure/suppliers.repository";
+import type { TenantAccessContext } from "../../identity/domain/auth-context";
 import { SupplierView } from "./supplier-view";
 
 /** The two duplicate checks every write runs, in this order: the phone, then similar names. */
@@ -25,6 +26,7 @@ export class SupplierChecks {
    */
   async assertNoSimilar(
     t: TenantTx,
+    access: TenantAccessContext,
     name: string,
     exceptId: string | null,
     acknowledged: boolean,
@@ -33,7 +35,11 @@ export class SupplierChecks {
     const ids = pool
       .filter((s) => s.id !== exceptId && areNamesSimilar(name, s.name))
       .map((s) => s.id);
-    const similar = await this.view.many(await this.suppliers.findManyByIds(t.tenantId, ids, t), t);
+    const similar = await this.view.many(
+      await this.suppliers.findManyByIds(t.tenantId, ids, t),
+      access,
+      t,
+    );
     if (similar.length > 0 && !acknowledged) throw SupplierErrors.similar(similar);
     return similar;
   }

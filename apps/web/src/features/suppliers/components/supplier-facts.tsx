@@ -26,12 +26,15 @@ export function SupplierFacts({ supplier }: { supplier: Supplier }) {
         <p>{ruleSentence(t, supplier.paymentRule)}</p>
         <p className="mt-1 text-sm text-slate-700">{t("suppliers.detail.ruleNote")}</p>
       </Fact>
-      <Fact label={t("suppliers.form.currency")}>
-        <span className="flex flex-wrap items-center gap-2">
-          {supplier.currency}
-          <NeighbourBadge isNeighbour={supplier.isNeighbour} />
-        </span>
-      </Fact>
+      {/* Absent for people who see suppliers only through receiving stock. */}
+      {supplier.currency && (
+        <Fact label={t("suppliers.form.currency")}>
+          <span className="flex flex-wrap items-center gap-2">
+            {supplier.currency}
+            <NeighbourBadge isNeighbour={supplier.isNeighbour} />
+          </span>
+        </Fact>
+      )}
       {supplier.kraPin && <Fact label={t("suppliers.form.kraPin")}>{supplier.kraPin}</Fact>}
       {supplier.marketOrLocation && (
         <Fact label={t("suppliers.form.market")}>{supplier.marketOrLocation}</Fact>

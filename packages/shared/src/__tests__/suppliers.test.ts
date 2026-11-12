@@ -15,6 +15,12 @@ describe("supplier phones (suppliers can be abroad)", () => {
     expect(normalizeSupplierPhone("+86 138 0013 8000")).toBe("+8613800138000");
     expect(normalizeSupplierPhone("12345")).toBeNull();
     expect(normalizeSupplierPhone("0097150123")).toBeNull();
+    // The trunk 0 after +254 is dropped: one phone, one spelling (unique-phone rule, T8).
+    expect(normalizeSupplierPhone("+2540799106855")).toBe("+254799106855");
+    expect(normalizeSupplierPhone("+254 0799 106 855")).toBe("+254799106855");
+    // Anything starting +254 is Kenyan or refused, never taken as an international number.
+    expect(normalizeSupplierPhone("+25471234567")).toBeNull();
+    expect(normalizeSupplierPhone("+25400799106855")).toBeNull();
   });
 });
 

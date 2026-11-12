@@ -15,11 +15,11 @@ export function StatusBadge({ status }: { status: Supplier["status"] }) {
 
 const pill = "rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900";
 
-export function CurrencyBadge({ currency }: { currency: Supplier["currency"] }) {
+export function CurrencyBadge({ currency }: { currency?: Supplier["currency"] | undefined }) {
   return currency === "USD" ? <span className={pill}>USD</span> : null;
 }
 
-export function NeighbourBadge({ isNeighbour }: { isNeighbour: boolean }) {
+export function NeighbourBadge({ isNeighbour }: { isNeighbour?: boolean | undefined }) {
   const { t } = useTranslation();
   return isNeighbour ? <span className={pill}>{t("suppliers.neighbour")}</span> : null;
 }

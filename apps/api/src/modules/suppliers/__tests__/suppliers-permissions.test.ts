@@ -130,7 +130,7 @@ describe("a new supplier typed while receiving goods (F03 section 9.10)", () => 
     ).toEqual([]);
   });
 
-  it("a storekeeper adds a name only; it is waiting, phoneless, cash and KES", async () => {
+  it("a storekeeper adds a name only; it is waiting, phoneless and cash", async () => {
     const res = await storekeeper.post("/suppliers/quick", { name: "Mama Fatuma Accessories" });
     expect(res.statusCode).toBe(201);
     const { supplier } = res.json<{ supplier: Supplier }>();
@@ -139,9 +139,10 @@ describe("a new supplier typed while receiving goods (F03 section 9.10)", () => 
       phone: null,
       status: "waiting",
       paymentRule: { type: "cash" },
-      currency: "KES",
-      isNeighbour: false,
     });
+    // Receiving staff do not see the currency or neighbour flag (reduced view).
+    expect(supplier).not.toHaveProperty("currency");
+    expect(supplier).not.toHaveProperty("isNeighbour");
     // It can already be picked in the receiving screen, and sits in the managers' waiting list.
     const listed = (await storekeeper.get("/suppliers")).json<SuppliersResponse>().suppliers;
     expect(listed.map((s) => s.id)).toContain(supplier.id);
@@ -302,15 +303,14 @@ describe("a new supplier typed while receiving goods (F03 section 9.10)", () => 
     expect((await lead.patch(`/suppliers/${quick.id}`, { notes: "x" })).statusCode).toBe(403);
   });
 
-  it("hiding a waiting supplier and showing it again returns it to waiting", async () => {
+  it("a waiting supplier cannot be hidden, even by a manager (it stays in the approvers' queue)", async () => {
     const quick = (
       await storekeeper.post("/suppliers/quick", { name: "Limuru Odd Jobs Supply" })
     ).json<{
       supplier: Supplier;
     }>().supplier;
     const hidden = await manager.post(`/suppliers/${quick.id}/hide`);
-    expect(hidden.json<{ supplier: Supplier }>().supplier.status).toBe("hidden");
-    const back = await manager.post(`/suppliers/${quick.id}/unhide`);
-    expect(back.json<{ supplier: Supplier }>().supplier.status).toBe("waiting");
+    expect(hidden.statusCode).toBe(409);
+    expect(hidden.json().error.code).toBe("supplier_not_active");
   });
 });

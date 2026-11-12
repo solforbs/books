@@ -32,7 +32,10 @@ const post = (path: string, body?: unknown) =>
 export const suppliersApi = {
   list: (query: SupplierListQuery) =>
     apiRequest(`/suppliers${queryString({ ...query })}`, { schema: suppliersResponseSchema }),
-  waiting: () => apiRequest("/suppliers/waiting", { schema: suppliersResponseSchema }),
+  waiting: (query: Pick<SupplierListQuery, "limit" | "cursor"> = {}) =>
+    apiRequest(`/suppliers/waiting${queryString({ ...query })}`, {
+      schema: suppliersResponseSchema,
+    }),
   get: (id: string) => apiRequest(`/suppliers/${enc(id)}`, { schema: supplierResponseSchema }),
   create: (body: CreateSupplierRequest) => post("/suppliers", body),
   quick: (body: QuickSupplierRequest) => post("/suppliers/quick", body),

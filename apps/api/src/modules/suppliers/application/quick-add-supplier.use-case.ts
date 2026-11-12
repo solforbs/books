@@ -39,6 +39,7 @@ export class QuickAddSupplierUseCase {
     const created = await this.tenantDb.transaction(tenantId, async (t) => {
       const similar = await this.checks.assertNoSimilar(
         t,
+        actor.access,
         input.name,
         null,
         input.acknowledgeSimilar,
@@ -53,7 +54,7 @@ export class QuickAddSupplierUseCase {
         },
         t,
       );
-      return { supplier: await this.view.one(row, t), similar };
+      return { supplier: await this.view.one(row, actor.access, t), similar };
     });
     await this.audit.record({
       ...auditBase(actor),

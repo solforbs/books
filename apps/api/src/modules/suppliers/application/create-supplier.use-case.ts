@@ -42,6 +42,7 @@ export class CreateSupplierUseCase {
         await this.checks.assertPhoneFree(t, input.phone, null);
         const similar = await this.checks.assertNoSimilar(
           t,
+          actor.access,
           input.name,
           null,
           input.acknowledgeSimilar,
@@ -63,7 +64,7 @@ export class CreateSupplierUseCase {
           },
           t,
         );
-        return { supplier: await this.view.one(row, t), similar };
+        return { supplier: await this.view.one(row, actor.access, t), similar };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, tenantId, input.phone)) ?? err;

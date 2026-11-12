@@ -98,6 +98,22 @@ describe("Waiting suppliers (G1)", () => {
     expect(screen.getByText(/Added by Juma Otieno/)).toBeVisible();
   });
 
+  it("counts every waiting supplier, paging through nextCursor, not just the first page", async () => {
+    const second = makeSupplier({ id: "w2", name: "Second Waiting Co", status: "waiting" });
+    const { calls } = renderShop("/suppliers", {
+      "GET /suppliers": suppliersPage([active]),
+      "GET /suppliers/waiting": [
+        suppliersPage([waitingSupplier], "cursor-1"),
+        suppliersPage([second], null),
+      ],
+    });
+    await shellReady();
+    expect((await screen.findAllByLabelText("2 suppliers waiting for completion")).length).toBe(2);
+    const waitingCalls = calls.filter((c) => c.path.startsWith("/suppliers/waiting"));
+    expect(waitingCalls.length).toBe(2);
+    expect(waitingCalls[1]!.path).toContain("cursor=cursor-1");
+  });
+
   it("does not ask for the waiting list, or show waiting wording, to non-approvers", async () => {
     const { calls } = renderShop(
       "/suppliers/waiting",
@@ -105,7 +121,7 @@ describe("Waiting suppliers (G1)", () => {
       managerNoApprove,
     );
     await screen.findByRole("heading", { name: "Suppliers" });
-    expect(calls.some((c) => c.path === "/suppliers/waiting")).toBe(false);
+    expect(calls.some((c) => c.path.startsWith("/suppliers/waiting"))).toBe(false);
     expect(document.body.textContent).not.toMatch(/approv|waiting|complete/i);
   });
 
@@ -115,7 +131,7 @@ describe("Waiting suppliers (G1)", () => {
       "GET /suppliers/waiting": suppliersPage([]),
     });
     await screen.findByRole("heading", { name: "Suppliers" });
-    expect(calls.some((c) => c.path === "/suppliers/waiting")).toBe(true);
+    expect(calls.some((c) => c.path.startsWith("/suppliers/waiting"))).toBe(true);
     expect(document.body.textContent).not.toMatch(/approv|waiting|complete/i);
   });
 

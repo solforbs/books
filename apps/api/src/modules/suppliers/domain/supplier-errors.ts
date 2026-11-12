@@ -20,6 +20,8 @@ export const SupplierErrors = {
   useFullForm: () =>
     badRequest("use_full_form", "People who can manage suppliers add them with the full form"),
   notWaiting: () => conflict("not_waiting", "Only a waiting supplier can be approved"),
+  notActive: () =>
+    conflict("supplier_not_active", "A supplier waiting for completion cannot be hidden"),
   phoneRequired: () => badRequest("phone_required", "A phone number is needed to approve"),
   forbidden: () => forbidden("forbidden", "You are not allowed to do this"),
 };

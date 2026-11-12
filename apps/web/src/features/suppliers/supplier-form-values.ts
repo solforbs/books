@@ -48,8 +48,9 @@ export function valuesFromSupplier(s: Supplier, blankPhone = false): SupplierFor
     ruleType: s.paymentRule.type,
     periodValue: String(period?.value ?? 1),
     periodUnit: period?.unit ?? "months",
-    currency: s.currency,
-    isNeighbour: s.isNeighbour,
+    // Editing needs manage/approve, who always receive these fields; the defaults only satisfy the type.
+    currency: s.currency ?? "KES",
+    isNeighbour: s.isNeighbour ?? false,
     kraPin: s.kraPin ?? "",
     market: s.marketOrLocation ?? "",
     notes: s.notes ?? "",

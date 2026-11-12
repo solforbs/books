@@ -244,6 +244,9 @@ export const so: Translations = {
       "Weli waxaad lacag ku leedahay ama lacag ayuu kugu leeyahay alaab-qeybiyahan. Marka hore xaree lacagta, kadibna qari.",
     use_full_form:
       "Waxaad ku dari kartaa alaab-qeybiyeyaal iyo faahfaahintooda oo dhan. Isticmaal badhanka Ku dar alaab-qeybiye.",
+    // TODO(translate-review)
+    supplier_not_active:
+      "Alaab-qeybiyahan weli wuxuu sugayaa dhammaystir. Marka hore dhammaystir, kadibna qari.",
     phone_required: "Geli lambarka taleefanka alaab-qeybiyaha.",
     unknown: "Wax baa khaldamay. Fadlan isku day mar kale.",
   },

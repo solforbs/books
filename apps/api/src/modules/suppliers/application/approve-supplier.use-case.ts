@@ -47,7 +47,13 @@ export class ApproveSupplierUseCase {
         const change = diffSupplier(row, fields);
         if (change.set.phone) await this.checks.assertPhoneFree(t, change.set.phone, id);
         if (change.set.name) {
-          await this.checks.assertNoSimilar(t, change.set.name, id, acknowledgeSimilar ?? false);
+          await this.checks.assertNoSimilar(
+            t,
+            actor.access,
+            change.set.name,
+            id,
+            acknowledgeSimilar ?? false,
+          );
         }
         await this.suppliers.updateById(
           tenantId,
@@ -56,7 +62,7 @@ export class ApproveSupplierUseCase {
           t,
         );
         const approved = (await this.suppliers.findById(tenantId, id, t))!;
-        return { change, supplier: await this.view.one(approved, t) };
+        return { change, supplier: await this.view.one(approved, actor.access, t) };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, tenantId, fields.phone ?? null)) ?? err;

@@ -187,6 +187,8 @@ export const en = {
     supplier_has_balance:
       "You still owe this supplier money, or they owe you. Settle the balance first, then hide them.",
     use_full_form: "You can add suppliers with all their details. Use the Add supplier button.",
+    supplier_not_active:
+      "This supplier is still waiting for completion. Complete it first, then you can hide it.",
     phone_required: "Enter the supplier's phone number.",
     unknown: "Something went wrong. Please try again.",
   },

@@ -27,11 +27,12 @@ export class UnhideSupplierUseCase {
     assertPermission(actor.access, "manage_suppliers");
     const result = await this.tenantDb.transaction(tenantId, async (t) => {
       const row = await this.lock.any(t, id);
-      if (row.status !== "hidden") return { changed: false, supplier: await this.view.one(row, t) };
+      if (row.status !== "hidden")
+        return { changed: false, supplier: await this.view.one(row, actor.access, t) };
       const back = row.hiddenFrom ?? "active";
       await this.suppliers.updateById(tenantId, id, { status: back, hiddenFrom: null }, t);
       const shown = (await this.suppliers.findById(tenantId, id, t))!;
-      return { changed: true, back, supplier: await this.view.one(shown, t) };
+      return { changed: true, back, supplier: await this.view.one(shown, actor.access, t) };
     });
     if (result.changed) {
       await this.audit.record({

@@ -33,6 +33,7 @@
  * - Currency is KES (default) or USD. KRA PIN is optional everywhere (G3).
  * - Approvals (G1): `active` when the creator is an approver, but phone-less quick-add suppliers
  *   are always `waiting` until an approver completes them. Solo shops never see waiting ones.
+ * - A waiting supplier cannot be hidden (409 `supplier_not_active`): it is approved first.
  * - Hiding is allowed only when the supplier's balance is zero (409 `supplier_has_balance`;
  *   balances do not exist yet, so this is an extension point that reports zero for now).
  * - Nothing is deleted (G4). Every write is audited.
@@ -73,9 +74,13 @@ export type PaymentRule = z.infer<typeof paymentRuleSchema>;
 
 /** A Kenyan number (normalized to +254...) or an international +<country code><digits>. */
 export function normalizeSupplierPhone(input: string): string | null {
-  const kenyan = normalizeKenyanPhone(input);
-  if (kenyan) return kenyan;
   const compact = input.replace(/[\s\-()]/g, "");
+  // Written with the trunk 0 after the country code (+2540799...): same phone as +254799...
+  const kenyan = normalizeKenyanPhone(compact.replace(/^\+2540(?=[17]\d{8}$)/, "+254"));
+  if (kenyan) return kenyan;
+  // +254 is Kenya: whatever the Kenyan normalizer refuses is never taken as international, or
+  // one phone could be stored in two spellings and break the unique-phone rule.
+  if (compact.startsWith("+254")) return null;
   return /^\+[1-9]\d{6,14}$/.test(compact) ? compact : null;
 }
 
@@ -162,11 +167,12 @@ export const supplierSchema = z.object({
   name: z.string(),
   phone: z.string().nullable(),
   paymentRule: paymentRuleSchema,
-  currency: z.enum(CURRENCIES),
-  isNeighbour: z.boolean(),
-  kraPin: z.string().nullable(),
-  marketOrLocation: z.string().nullable(),
-  notes: z.string().nullable(),
+  /** The five fields below are left out for people who see suppliers only via receive_stock. */
+  currency: z.enum(CURRENCIES).optional(),
+  isNeighbour: z.boolean().optional(),
+  kraPin: z.string().nullable().optional(),
+  marketOrLocation: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   status: z.enum(SUPPLIER_STATUSES),
   addedBy: z.object({ id: z.string(), name: z.string() }),
   createdAt: z.string(),
@@ -187,6 +193,8 @@ export const SUPPLIER_ERROR_CODES = [
   "supplier_has_balance",
   "use_full_form",
   "not_waiting",
+  "supplier_not_active",
+  "invalid_cursor",
   "phone_required",
   "forbidden",
 ] as const;

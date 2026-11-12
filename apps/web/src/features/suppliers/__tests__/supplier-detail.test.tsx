@@ -2,7 +2,12 @@ import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { apiError } from "@/test/mock-fetch";
 import { renderShop } from "@/test/render-shop";
-import { makeSupplier, receiverAccess, supplierBody } from "@/test/supplier-fixtures";
+import {
+  makeReducedSupplier,
+  makeSupplier,
+  receiverAccess,
+  supplierBody,
+} from "@/test/supplier-fixtures";
 
 const supplier = makeSupplier({
   paymentRule: { type: "within_time", period: { value: 2, unit: "weeks" } },
@@ -81,5 +86,16 @@ describe("Supplier page", () => {
   it("says a missing supplier was not found", async () => {
     renderShop("/suppliers/zzz", { "GET /suppliers/zzz": apiError(404, "supplier_not_found") });
     expect(await screen.findByText("This supplier was not found.")).toBeVisible();
+  });
+
+  it("shows receiving staff a reduced supplier without empty labels or misleading defaults", async () => {
+    const reduced = makeReducedSupplier();
+    renderShop("/suppliers/s1", { "GET /suppliers/s1": supplierBody(reduced) }, receiverAccess);
+    await screen.findByRole("heading", { name: "Eastleigh Phones Ltd" });
+    expect(screen.getByText("+254712345678")).toBeVisible();
+    for (const label of ["Currency", "KRA PIN", "Notes", "Neighbour"]) {
+      expect(screen.queryByText(new RegExp(label, "i"))).not.toBeInTheDocument();
+    }
+    expect(document.body.textContent).not.toMatch(/KES|USD|undefined|null/);
   });
 });

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { renderShop, shellReady } from "@/test/render-shop";
 import {
+  makeReducedSupplier,
   makeSupplier,
   noSupplierAccess,
   receiverAccess,
@@ -104,5 +105,12 @@ describe("Suppliers in the main menu", () => {
     await screen.findByText("Cash Co");
     expect(screen.queryByRole("link", { name: "Add supplier" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Show hidden suppliers")).not.toBeInTheDocument();
+  });
+
+  it("lists reduced suppliers (no currency or neighbour) without badges", async () => {
+    const reduced = makeReducedSupplier({ id: "r", name: "Reduced Co" });
+    renderShop("/suppliers", { "GET /suppliers": suppliersPage([reduced]) }, receiverAccess);
+    const row = (await screen.findByText("Reduced Co")).closest("a");
+    expect(row?.textContent).not.toMatch(/USD|KES|Neighbour/);
   });
 });

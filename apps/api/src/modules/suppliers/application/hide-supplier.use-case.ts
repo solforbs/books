@@ -13,7 +13,8 @@ import { SupplierView } from "./supplier-view";
 /**
  * `POST /suppliers/:id/hide` (manage_suppliers). Nothing is deleted (G4); a supplier is hidden
  * only when the shop owes it nothing (409 `supplier_has_balance`). Hiding a hidden supplier
- * changes nothing. A waiting supplier stays waiting underneath and returns to waiting.
+ * changes nothing. A waiting supplier cannot be hidden (409 `supplier_not_active`): an approver
+ * completes it first, so nobody can take it out of the approvers' queue.
  */
 @Injectable()
 export class HideSupplierUseCase {
@@ -31,20 +32,29 @@ export class HideSupplierUseCase {
     assertPermission(actor.access, "manage_suppliers");
     const result = await this.tenantDb.transaction(tenantId, async (t) => {
       const row = await this.lock.any(t, id);
-      if (row.status === "hidden") return { changed: false, supplier: await this.view.one(row, t) };
+      if (row.status === "hidden")
+        return {
+          changed: false,
+          before: row.status,
+          supplier: await this.view.one(row, actor.access, t),
+        };
+      if (row.status === "waiting") throw SupplierErrors.notActive();
       const balance = await this.probe.balanceOf(tenantId, id);
       if (balance !== 0) throw SupplierErrors.hasBalance(balance);
-      const hiddenFrom = row.status === "waiting" ? "waiting" : "active";
-      await this.suppliers.updateById(tenantId, id, { status: "hidden", hiddenFrom }, t);
+      await this.suppliers.updateById(tenantId, id, { status: "hidden", hiddenFrom: "active" }, t);
       const hidden = (await this.suppliers.findById(tenantId, id, t))!;
-      return { changed: true, supplier: await this.view.one(hidden, t) };
+      return {
+        changed: true,
+        before: row.status,
+        supplier: await this.view.one(hidden, actor.access, t),
+      };
     });
     if (result.changed) {
       await this.audit.record({
         ...auditBase(actor),
         action: "supplier_hidden",
         targetId: id,
-        details: { before: { status: "visible" }, after: { status: "hidden" } },
+        details: { before: { status: result.before }, after: { status: "hidden" } },
       });
     }
     return { supplier: result.supplier };

@@ -41,14 +41,21 @@ export class UpdateSupplierUseCase {
       result = await this.tenantDb.transaction(tenantId, async (t) => {
         const row = await this.lock.any(t, id);
         const change = diffSupplier(row, fields);
-        if (!hasChanges(change)) return { change, supplier: await this.view.one(row, t) };
+        if (!hasChanges(change))
+          return { change, supplier: await this.view.one(row, actor.access, t) };
         if (change.set.phone) await this.checks.assertPhoneFree(t, change.set.phone, id);
         if (change.set.name) {
-          await this.checks.assertNoSimilar(t, change.set.name, id, acknowledgeSimilar ?? false);
+          await this.checks.assertNoSimilar(
+            t,
+            actor.access,
+            change.set.name,
+            id,
+            acknowledgeSimilar ?? false,
+          );
         }
         await this.suppliers.updateById(tenantId, id, change.set, t);
         const updated = (await this.suppliers.findById(tenantId, id, t))!;
-        return { change, supplier: await this.view.one(updated, t) };
+        return { change, supplier: await this.view.one(updated, actor.access, t) };
       });
     } catch (err) {
       throw (await this.conflicts.translate(err, tenantId, fields.phone ?? null)) ?? err;
