@@ -11,6 +11,8 @@ export const enSettings = {
     home: "Home",
     products: "Products",
     suppliers: "Suppliers",
+    receiving: "Stock in",
+    stock: "Stock",
     settings: "Settings",
   },
   setup: {

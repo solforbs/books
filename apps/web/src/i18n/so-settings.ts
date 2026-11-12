@@ -14,6 +14,8 @@ export const soSettings: Pick<Translations, keyof typeof enSettings> = {
     home: "Bogga hore",
     products: "Alaabta",
     suppliers: "Alaab-qeybiyeyaal",
+    receiving: "Alaab soo gal",
+    stock: "Kayd",
     settings: "Dejinta",
   },
   setup: {

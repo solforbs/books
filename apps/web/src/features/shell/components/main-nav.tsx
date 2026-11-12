@@ -1,10 +1,11 @@
-import { House, Package, Settings, Truck, type LucideIcon } from "lucide-react";
+import { Boxes, House, Package, PackagePlus, Settings, Truck, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 import { useAccess } from "@/features/access/hooks/use-access";
 import { useWaitingProducts } from "@/features/catalog/hooks/use-waiting-products";
 import { useSupplierAccess } from "@/features/suppliers/hooks/use-supplier-access";
 import { useWaitingSuppliers } from "@/features/suppliers/hooks/use-suppliers";
+import { STOCK_VIEW_PERMISSIONS } from "@/features/stock/stock-permissions";
 import { visibleSettingsEntries } from "@/features/settings/settings-entries";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,13 @@ function useNavItems(): NavItem[] {
         ? { badge: waitingSuppliers.count, badgeLabel: "suppliers.nav.waiting" }
         : {}),
     });
+  }
+  // Stock in and Stock appear only for people the API lets in (no dead buttons).
+  if (access.can("receive_stock")) {
+    items.push({ to: "/receiving", label: t("nav.receiving"), icon: PackagePlus, end: false });
+  }
+  if (STOCK_VIEW_PERMISSIONS.some((permission) => access.can(permission))) {
+    items.push({ to: "/stock", label: t("nav.stock"), icon: Boxes, end: false });
   }
   // Settings appears only when at least one settings page is usable (no dead buttons).
   if (visibleSettingsEntries(access).length > 0) {

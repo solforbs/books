@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import { LoadError, LoadingText } from "@/components/load-state";
 import { useMyAccess } from "@/features/access/hooks/use-access";
 import { useTenantId } from "@/features/access/hooks/use-tenant";
@@ -7,16 +7,25 @@ import { CurrentLocationProvider } from "@/features/locations/hooks/current-loca
 import { useLocations } from "@/features/locations/hooks/use-locations";
 import { NoLocationPage } from "@/features/locations/pages/no-location-page";
 import { workLocations } from "@/features/locations/visible-locations";
+import { cn } from "@/lib/utils";
 import { BottomNav, SideNav } from "./main-nav";
 import { TopBar } from "./top-bar";
 
+/** The stock-in sheet is a grid on large screens, so it gets more width than other pages. */
+const WIDE_PAGES = ["/receiving/new"];
+
 function Frame({ children, nav }: { children: ReactNode; nav: boolean }) {
+  const wide = WIDE_PAGES.includes(useLocation().pathname);
   return (
     <div className="min-h-screen bg-slate-50 pb-20 md:pb-0">
       <TopBar showLocations={nav} />
-      <div className="mx-auto flex max-w-5xl gap-6 px-4 py-6">
+      <div className={cn("mx-auto flex gap-6 px-4 py-6", wide ? "max-w-7xl" : "max-w-5xl")}>
         {nav && <SideNav />}
-        <main className="flex min-w-0 max-w-2xl flex-1 flex-col gap-4">{children}</main>
+        <main
+          className={cn("flex min-w-0 flex-1 flex-col gap-4", wide ? "max-w-5xl" : "max-w-2xl")}
+        >
+          {children}
+        </main>
       </div>
       {nav && <BottomNav />}
     </div>
