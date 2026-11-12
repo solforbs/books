@@ -33,16 +33,15 @@ export const DeliveryErrors = {
     badRequest("invalid_imei", "This is not a valid IMEI or serial number", details),
   duplicateInDelivery: (number: string) =>
     badRequest("duplicate_imei_in_delivery", "The same number appears twice", { number }),
-  imeiInStock: (details: {
-    number: string;
-    locationId: string;
-    locationName: string | null;
-    unitId: string;
-  }) => conflict("imei_in_stock", "This number is already in stock", details),
-  imeiSoldBefore: (details: { number: string; since: string; unitId: string; status: string }) =>
-    conflict("imei_sold_before", "This number was sold before; an owner or manager must confirm", {
-      ...details,
-    }),
+  /** Details are exactly what the app shows: the number and the place it is in (F04 T8). */
+  imeiInStock: (details: { imei: string; locationName: string | null }) =>
+    conflict("imei_in_stock", "This number is already in stock", details),
+  imeiSoldBefore: (details: { imei: string }) =>
+    conflict(
+      "imei_sold_before",
+      "This number was sold before; an owner or manager must confirm",
+      details,
+    ),
   imeiCountMismatch: (details: { productId: string; pieces: number; units: number }) =>
     badRequest("imei_count_mismatch", "The number of IMEIs does not match the quantity", details),
   unitsNotAllowed: (productId: string) =>

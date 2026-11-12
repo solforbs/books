@@ -67,20 +67,13 @@ export class UnitChecks {
     if (inStock) {
       const names = await this.locations.namesOf(t.tenantId, [inStock.unit.locationId], t);
       throw DeliveryErrors.imeiInStock({
-        number: inStock.number,
-        locationId: inStock.unit.locationId,
+        imei: inStock.number,
         locationName: names.get(inStock.unit.locationId) ?? null,
-        unitId: inStock.unit.id,
       });
     }
     const soldBefore = conflicts.find((c) => c.kind === "sold_before");
     if (soldBefore && !mayConfirm) {
-      throw DeliveryErrors.imeiSoldBefore({
-        number: soldBefore.number,
-        since: soldBefore.unit.updatedAt.toISOString(),
-        unitId: soldBefore.unit.id,
-        status: soldBefore.unit.status,
-      });
+      throw DeliveryErrors.imeiSoldBefore({ imei: soldBefore.number });
     }
     return prepared;
   }

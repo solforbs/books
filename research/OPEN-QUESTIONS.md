@@ -76,3 +76,4 @@ Server-side choices for suppliers (also not in the spec):
 | R12 | **Stock list speed:** put together in memory from stock rows and matching products. | Fine for some thousands of rows. |
 | R13 | **Closing a location or hiding a product** reads stock in a separate transaction, so a delivery saved at the same instant could slip through. | Same as the earlier probes; not locked. |
 | R14 | **Unknown product id in a delivery.** | 400 `product_not_found` (hidden, merged, rejected: `product_not_receivable`). |
+| R15 | **Error details for the IMEI conflicts** (asked for by the app). | `imei_in_stock` sends exactly `{ imei, locationName }`; `imei_sold_before` exactly `{ imei }`. The app scans each IMEI with `GET /stock/lookup?number=` for more (status, date, delivery). |

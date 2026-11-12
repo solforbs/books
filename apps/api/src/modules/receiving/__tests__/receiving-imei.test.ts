@@ -71,8 +71,10 @@ describe("receiving stock: IMEI rules (F04a)", () => {
     expect(res.statusCode).toBe(409);
     expect(errorOf(res)).toMatchObject({
       code: "imei_in_stock",
-      details: { number: imei(120), locationName: "Shop 2", locationId: s.shop2.id },
+      details: { imei: imei(120), locationName: "Shop 2" },
     });
+    // The details are exactly what the app shows, nothing more.
+    expect(errorOf(res).details).toEqual({ imei: imei(120), locationName: "Shop 2" });
     // Also when it is the second IMEI of an existing phone.
     await receive(
       s.owner,
@@ -132,9 +134,10 @@ describe("receiving stock: IMEI rules (F04a)", () => {
     expect(plain.statusCode).toBe(409);
     expect(errorOf(plain)).toMatchObject({
       code: "imei_sold_before",
-      details: { number: imei(150), status: "sold" },
+      details: { imei: imei(150) },
     });
 
+    expect(errorOf(plain).details).toEqual({ imei: imei(150) });
     const cashier = await staffAt(t, s, "cashier");
     const refused = await cashier.client.post(
       "/deliveries",
